@@ -1,6 +1,36 @@
+import { useEffect } from "react";
 import { RouterProvider } from "react-router/dom";
+import { useLearnerStore } from "../features/home";
 import { router } from "./router";
 
 export function App() {
+  const ready = useLearnerStore((state) => state.ready);
+  const loadError = useLearnerStore((state) => state.loadError);
+  const hydrate = useLearnerStore((state) => state.hydrate);
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  if (loadError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-surface p-6 text-center">
+        <div>
+          <h1 className="text-headline-medium text-on-surface">Your library could not be opened</h1>
+          <p className="mt-2 text-body-large text-on-surface-variant">{loadError}</p>
+        </div>
+      </main>
+    );
+  }
+  if (!ready) {
+    return (
+      <main
+        className="flex min-h-screen items-center justify-center bg-surface"
+        aria-busy="true"
+      >
+        <p className="text-body-large text-on-surface-variant">Opening your library…</p>
+      </main>
+    );
+  }
   return <RouterProvider router={router} />;
 }

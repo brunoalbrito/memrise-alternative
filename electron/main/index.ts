@@ -2,6 +2,9 @@ import { join } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { LibraryTooNewError } from "../db/migrate";
 import { openLibrary, type OpenedLibrary } from "../db/connection";
+import { handle } from "../ipc/register";
+import { applyChange, loadLibrary, purgeTrash } from "../services/library";
+import { LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
 import { createMainWindow } from "./window";
 
@@ -17,6 +20,11 @@ function registerIpc(): void {
       libraryVersion: library?.version ?? 0,
     },
   }));
+  handle("library:load", null, () => loadLibrary(library!.db));
+  handle("library:apply", LibraryChangeSchema, (change) => {
+    applyChange(library!.db, change);
+    return null;
+  });
 }
 
 function start(): void {
@@ -31,6 +39,7 @@ function start(): void {
     app.exit(1);
     return;
   }
+  purgeTrash(library.db);
   registerIpc();
   createMainWindow();
 }

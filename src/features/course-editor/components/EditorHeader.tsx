@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useLearnerStore } from "../../home";
 
 export type EditorTab = "levels" | "databases" | "contributors" | "details";
 
@@ -21,6 +22,8 @@ export function EditorHeader({
   activeTab,
 }: EditorHeaderProps) {
   const base = `/course/${courseId}/edit`;
+  const saveStatus = useLearnerStore((state) => state.saveStatus);
+  const retrySave = useLearnerStore((state) => state.retrySave);
   const tabs: { id: EditorTab; label: string; to: string }[] = [
     { id: "levels", label: `Levels (${levelCount})`, to: base },
     { id: "databases", label: "Databases", to: `${base}/databases` },
@@ -59,9 +62,21 @@ export function EditorHeader({
               {tab.label}
             </Link>
           ))}
+          <span role="status" aria-live="polite" className="ml-auto text-body-medium text-on-surface-variant">
+            {saveStatus === "saving" && "Saving…"}
+            {saveStatus === "saved" && "Saved"}
+            {saveStatus === "failed" && (
+              <span className="text-error">
+                Save failed{" "}
+                <button type="button" onClick={retrySave} className="underline">
+                  Retry
+                </button>
+              </span>
+            )}
+          </span>
           <Link
             to={`/course/${courseId}`}
-            className={`${linkBase} ml-auto text-on-surface-variant hover:bg-on-surface/8`}
+            className={`${linkBase}  text-on-surface-variant hover:bg-on-surface/8`}
           >
             Back to Course
           </Link>

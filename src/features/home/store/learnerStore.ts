@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { getLanguageById } from "../data/languages";
+import { getApi, isDesktop } from "../../../shared/api";
+import type { LibraryChange } from "../../../../electron/shared/schemas";
 import { deleteMedia } from "../../../shared/media/mediaStore";
 import { sampleCourses } from "../data/sampleCourses";
 import { sampleLevels } from "../data/sampleLevels";
 import { parseTags } from "../model/tags";
 import {
-  GOAL_VALUES,
   type Course,
   type CourseDraft,
   type CourseEdit,
@@ -21,7 +20,15 @@ export class CourseNotFoundError extends Error {
   }
 }
 
+export type SaveStatus = "idle" | "saving" | "saved" | "failed";
+
 interface LearnerState {
+  /** False until the stored library has been loaded (always true in the browser build). */
+  ready: boolean;
+  loadError: string | null;
+  saveStatus: SaveStatus;
+  hydrate: () => Promise<void>;
+  retrySave: () => void;
   goals: Record<string, GoalValue>;
   removedCourseIds: string[];
   createdCourses: Course[];
@@ -34,11 +41,6 @@ interface LearnerState {
   updateCourse: (courseId: string, draft: CourseDraft) => void;
   setCourseLevels: (courseId: string, levels: CourseLevel[]) => void;
 }
-
-type PersistedLearner = Pick<
-  LearnerState,
-  "goals" | "removedCourseIds" | "createdCourses" | "courseEdits" | "courseLevels"
->;
 
 const sampleIds = new Set(sampleCourses.map((course) => course.id));
 
@@ -93,179 +95,188 @@ function cleanupMedia(before: Set<string>, after: Set<string>) {
   }
 }
 
-function isNonNegativeInteger(value: unknown): boolean {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+const LEVEL_SAVE_DELAY_MS = 400;
+
+/** Changes are written in order, one at a time. Failed ones are kept so the user can retry. */
+let queue: Promise<void> = Promise.resolve();
+let failed: LibraryChange[] = [];
+const levelTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function send(change: LibraryChange): void {
+  if (!isDesktop()) return;
+  useLearnerStore.setState({ saveStatus: "saving" });
+  queue = queue.then(async () => {
+    let ok: boolean;
+    try {
+      ok = (await getApi().library.apply(change)).ok;
+    } catch {
+      ok = false;
+    }
+    if (!ok) failed.push(change);
+    useLearnerStore.setState({
+      saveStatus: failed.length > 0 ? "failed" : "saved",
+    });
+  });
 }
 
-function isValidCreatedCourse(course: Course): boolean {
-  return (
-    typeof course.id === "string" &&
-    typeof course.title === "string" &&
-    course.teachingLanguageId !== undefined &&
-    getLanguageById(course.teachingLanguageId) !== undefined &&
-    isNonNegativeInteger(course.totalItems) &&
-    isNonNegativeInteger(course.itemsLearned) &&
-    isNonNegativeInteger(course.itemsDue) &&
-    isNonNegativeInteger(course.learnedToday)
+function flushLevels(courseId: string): void {
+  const timer = levelTimers.get(courseId);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  levelTimers.delete(courseId);
+  const levels = useLearnerStore.getState().courseLevels[courseId];
+  if (levels) send({ type: "saveLevels", courseId, levels });
+}
+
+function scheduleLevels(courseId: string): void {
+  const existing = levelTimers.get(courseId);
+  if (existing !== undefined) clearTimeout(existing);
+  if (isDesktop()) useLearnerStore.setState({ saveStatus: "saving" });
+  levelTimers.set(
+    courseId,
+    setTimeout(() => flushLevels(courseId), LEVEL_SAVE_DELAY_MS),
   );
 }
 
-export const useLearnerStore = create<LearnerState>()(
-  persist(
-    (set) => ({
-      goals: {},
-      removedCourseIds: [],
-      createdCourses: [],
-      courseEdits: {},
-      courseLevels: {},
-      setGoal: (courseId, value) =>
-        set((state) => {
-          const goals = { ...state.goals };
-          if (value === null) delete goals[courseId];
-          else goals[courseId] = value;
-          return { goals };
-        }),
-      removeCourse: (courseId) =>
-        set((state) => {
-          const ids = allCourseIds(state.createdCourses);
-          const before = referencedMediaIds(state.courseLevels, ids);
-          const courseLevels = { ...state.courseLevels };
-          delete courseLevels[courseId];
-          if (state.createdCourses.some((course) => course.id === courseId)) {
-            const goals = { ...state.goals };
-            delete goals[courseId];
-            const createdCourses = state.createdCourses.filter(
-              (course) => course.id !== courseId,
-            );
-            cleanupMedia(
-              before,
-              referencedMediaIds(courseLevels, allCourseIds(createdCourses)),
-            );
-            return { createdCourses, goals, courseLevels };
-          }
-          const courseEdits = { ...state.courseEdits };
-          delete courseEdits[courseId];
-          if (state.removedCourseIds.includes(courseId)) return state;
-          cleanupMedia(before, referencedMediaIds(courseLevels, ids));
-          return {
-            removedCourseIds: [...state.removedCourseIds, courseId],
-            courseEdits,
-            courseLevels,
-          };
-        }),
-      restoreCourses: () => set({ removedCourseIds: [] }),
-      addCourse: (draft) => {
-        const id = `custom-${crypto.randomUUID()}`;
-        const tags = parseTags(draft.tagsInput);
-        const description = draft.description.trim();
-        const shortDescription = draft.shortDescription.trim();
-        const course: Course = {
-          id,
-          title: draft.name.trim(),
-          categoryId: `lang-${draft.teachingLanguageId}`,
-          teaching: true,
-          totalItems: 0,
-          itemsLearned: 0,
-          itemsDue: 0,
-          learnedToday: 0,
-          teachingLanguageId: draft.teachingLanguageId,
-          speakersLanguageId: draft.speakersLanguageId,
-          tags: tags.length > 0 ? tags : undefined,
-          description: description === "" ? undefined : description,
-          shortDescription: shortDescription === "" ? undefined : shortDescription,
-        };
-        set((state) => ({
-          createdCourses: [...state.createdCourses, course],
-          courseLevels: { ...state.courseLevels, [id]: [] },
-        }));
-        return id;
-      },
-      setCourseLevels: (courseId, levels) =>
-        set((state) => {
-          const ids = allCourseIds(state.createdCourses);
-          const before = referencedMediaIds(state.courseLevels, ids);
-          const courseLevels = { ...state.courseLevels, [courseId]: levels };
-          cleanupMedia(before, referencedMediaIds(courseLevels, ids));
-          return { courseLevels };
-        }),
-      updateCourse: (courseId, draft) =>
-        set((state) => {
-          const created = state.createdCourses.find((c) => c.id === courseId);
-          const sample = sampleCourses.find((c) => c.id === courseId);
-          if (!created && (!sample || state.removedCourseIds.includes(courseId))) {
-            throw new CourseNotFoundError();
-          }
-          if (created) {
-            const edit = buildEdit(created, draft);
-            return {
-              createdCourses: state.createdCourses.map((c) =>
-                c.id === courseId ? { ...c, ...edit } : c,
-              ),
-            };
-          }
-          const base: Course = { ...sample!, ...state.courseEdits[courseId] };
-          return {
-            courseEdits: {
-              ...state.courseEdits,
-              [courseId]: buildEdit(base, draft),
-            },
-          };
-        }),
-    }),
-    {
-      name: "membetter.learner",
-      version: 1,
-      partialize: (state): PersistedLearner => ({
-        goals: state.goals,
-        removedCourseIds: state.removedCourseIds,
-        createdCourses: state.createdCourses,
-        courseEdits: state.courseEdits,
-        courseLevels: state.courseLevels,
-      }),
-      merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<PersistedLearner>;
-        const createdCourses = (saved.createdCourses ?? []).filter(
-          isValidCreatedCourse,
-        );
-        const knownIds = new Set([
-          ...sampleIds,
-          ...createdCourses.map((course) => course.id),
-        ]);
-        const goals: Record<string, GoalValue> = {};
-        for (const [id, value] of Object.entries(saved.goals ?? {})) {
-          if (knownIds.has(id) && GOAL_VALUES.includes(value)) goals[id] = value;
-        }
-        const removedCourseIds = (saved.removedCourseIds ?? []).filter((id) =>
-          sampleIds.has(id),
-        );
-        const courseEdits: Record<string, CourseEdit> = {};
-        for (const [id, edit] of Object.entries(saved.courseEdits ?? {})) {
-          const languagesValid =
-            (edit.teachingLanguageId === undefined ||
-              getLanguageById(edit.teachingLanguageId) !== undefined) &&
-            (edit.speakersLanguageId === undefined ||
-              getLanguageById(edit.speakersLanguageId) !== undefined);
-          if (sampleIds.has(id) && languagesValid) courseEdits[id] = edit;
-        }
-        const validIds = new Set([...sampleIds, ...createdCourses.map((c) => c.id)]);
-        const courseLevels: Record<string, CourseLevel[]> = {};
-        for (const [id, levels] of Object.entries(saved.courseLevels ?? {})) {
-          const wellFormed =
-            Array.isArray(levels) &&
-            levels.every(
-              (level) => Array.isArray(level.words) && typeof level.name === "string",
-            );
-          if (validIds.has(id) && wellFormed) courseLevels[id] = levels;
-        }
-        return {
-          ...current,
-          goals,
-          removedCourseIds,
-          createdCourses,
-          courseEdits,
-          courseLevels,
-        };
-      },
-    },
-  ),
-);
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    for (const courseId of [...levelTimers.keys()]) flushLevels(courseId);
+  });
+}
+
+export const useLearnerStore = create<LearnerState>()((set, get) => ({
+  ready: !isDesktop(),
+  loadError: null,
+  saveStatus: "idle",
+  goals: {},
+  removedCourseIds: [],
+  createdCourses: [],
+  courseEdits: {},
+  courseLevels: {},
+  hydrate: async () => {
+    if (!isDesktop()) {
+      set({ ready: true });
+      return;
+    }
+    try {
+      const result = await getApi().library.load();
+      if (!result.ok) {
+        set({ loadError: result.error.message });
+        return;
+      }
+      const data = result.data;
+      set({
+        ready: true,
+        loadError: null,
+        goals: data.goals,
+        removedCourseIds: data.removedCourseIds,
+        createdCourses: data.createdCourses,
+        courseEdits: data.courseEdits,
+        courseLevels: data.courseLevels,
+      });
+    } catch {
+      set({ loadError: "The library could not be loaded." });
+    }
+  },
+  retrySave: () => {
+    const retry = failed;
+    failed = [];
+    for (const change of retry) send(change);
+  },
+  setGoal: (courseId, value) => {
+    set((state) => {
+      const goals = { ...state.goals };
+      if (value === null) delete goals[courseId];
+      else goals[courseId] = value;
+      return { goals };
+    });
+    send({ type: "setGoal", courseId, value });
+  },
+  removeCourse: (courseId) => {
+    const state = get();
+    const ids = allCourseIds(state.createdCourses);
+    const before = referencedMediaIds(state.courseLevels, ids);
+    const courseLevels = { ...state.courseLevels };
+    delete courseLevels[courseId];
+    levelTimers.delete(courseId);
+    if (state.createdCourses.some((course) => course.id === courseId)) {
+      const goals = { ...state.goals };
+      delete goals[courseId];
+      const createdCourses = state.createdCourses.filter((course) => course.id !== courseId);
+      cleanupMedia(before, referencedMediaIds(courseLevels, allCourseIds(createdCourses)));
+      set({ createdCourses, goals, courseLevels });
+      send({ type: "deleteCourse", courseId });
+      return;
+    }
+    if (state.removedCourseIds.includes(courseId)) return;
+    const courseEdits = { ...state.courseEdits };
+    delete courseEdits[courseId];
+    cleanupMedia(before, referencedMediaIds(courseLevels, ids));
+    set({
+      removedCourseIds: [...state.removedCourseIds, courseId],
+      courseEdits,
+      courseLevels,
+    });
+    send({ type: "hideCourse", courseId });
+  },
+  restoreCourses: () => {
+    set({ removedCourseIds: [] });
+    send({ type: "restoreHidden" });
+  },
+  addCourse: (draft) => {
+    const id = `custom-${crypto.randomUUID()}`;
+    const tags = parseTags(draft.tagsInput);
+    const description = draft.description.trim();
+    const shortDescription = draft.shortDescription.trim();
+    const course: Course = {
+      id,
+      title: draft.name.trim(),
+      categoryId: `lang-${draft.teachingLanguageId}`,
+      teaching: true,
+      totalItems: 0,
+      itemsLearned: 0,
+      itemsDue: 0,
+      learnedToday: 0,
+      teachingLanguageId: draft.teachingLanguageId,
+      speakersLanguageId: draft.speakersLanguageId,
+      tags: tags.length > 0 ? tags : undefined,
+      description: description === "" ? undefined : description,
+      shortDescription: shortDescription === "" ? undefined : shortDescription,
+    };
+    set((state) => ({
+      createdCourses: [...state.createdCourses, course],
+      courseLevels: { ...state.courseLevels, [id]: [] },
+    }));
+    send({ type: "upsertCourse", course });
+    return id;
+  },
+  setCourseLevels: (courseId, levels) => {
+    const state = get();
+    const ids = allCourseIds(state.createdCourses);
+    const before = referencedMediaIds(state.courseLevels, ids);
+    const courseLevels = { ...state.courseLevels, [courseId]: levels };
+    cleanupMedia(before, referencedMediaIds(courseLevels, ids));
+    set({ courseLevels });
+    scheduleLevels(courseId);
+  },
+  updateCourse: (courseId, draft) => {
+    const state = get();
+    const created = state.createdCourses.find((c) => c.id === courseId);
+    const sample = sampleCourses.find((c) => c.id === courseId);
+    if (!created && (!sample || state.removedCourseIds.includes(courseId))) {
+      throw new CourseNotFoundError();
+    }
+    if (created) {
+      const updated: Course = { ...created, ...buildEdit(created, draft) };
+      set({
+        createdCourses: state.createdCourses.map((c) => (c.id === courseId ? updated : c)),
+      });
+      send({ type: "upsertCourse", course: updated });
+      return;
+    }
+    const base: Course = { ...sample!, ...state.courseEdits[courseId] };
+    const edit = buildEdit(base, draft);
+    set({ courseEdits: { ...state.courseEdits, [courseId]: edit } });
+    send({ type: "setEdit", courseId, edit });
+  },
+}));
