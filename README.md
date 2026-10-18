@@ -15,7 +15,8 @@ React + Vite + TypeScript renderer inside an Electron shell. Data lives in a loc
 | Command | Purpose |
 |---|---|
 | `pnpm install` | Install dependencies (the Electron binary and the SQLite module are fetched on install) |
-| `pnpm dev` | Run the desktop app with hot reload |
+| `pnpm dev` | Run the desktop app with hot reload. It starts with an empty library kept in its own `MemBetter-dev` data folder |
+| `pnpm dev:reset` | Delete the data of `pnpm dev` (stored in a separate `MemBetter-dev` folder) so the next run starts empty |
 | `pnpm dev:web` | Run only the web renderer in a browser (no storage; used for UI work and for the prototype's "Export my data") |
 | `pnpm build` | Type-check and build the app into `out/` |
 | `pnpm package:dir` | Build an unpacked app for this computer in `release/` |

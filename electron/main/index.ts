@@ -22,6 +22,12 @@ import type { AppInfo, Result } from "../shared/api";
 import { setupAutoUpdate } from "./updater";
 import { createMainWindow } from "./window";
 
+// `pnpm dev` keeps its own data folder, so development never touches the data of an installed MemBetter
+// (tests pass --user-data-dir and are left alone). `pnpm dev:reset` empties it.
+if (!app.isPackaged && !process.argv.some((arg) => arg.startsWith("--user-data-dir"))) {
+  app.setPath("userData", join(app.getPath("appData"), "MemBetter-dev"));
+}
+
 let library: OpenedLibrary | null = null;
 let media: MediaStore | null = null;
 let secrets: Secrets | null = null;
@@ -273,7 +279,8 @@ function start(): void {
     library.db,
     settings,
     join(app.getPath("userData"), "library", "media"),
-    process.env["MEMBETTER_BACKUP_FOLDER"] ?? join(app.getPath("documents"), "MemBetter Backups"),
+    process.env["MEMBETTER_BACKUP_FOLDER"] ??
+      (app.isPackaged ? join(app.getPath("documents"), "MemBetter Backups") : join(app.getPath("userData"), "backups")),
   );
   // Automatic backups run in the background and never block the app; a failure is remembered and shown as a warning.
   void backups.runIfDue();
