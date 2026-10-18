@@ -16,6 +16,9 @@ export function handle<I, O>(
       }
       return { ok: true, data: fn(input.data) };
     } catch (error) {
+      if (error instanceof Error && "code" in error && typeof (error as { code: unknown }).code === "string" && error.name === "MediaError") {
+        return { ok: false, error: { code: (error as { code: string }).code, message: error.message } };
+      }
       console.error(`[ipc] ${channel} failed`, error);
       return { ok: false, error: { code: "internal", message: "Something went wrong. Your data was not changed." } };
     }

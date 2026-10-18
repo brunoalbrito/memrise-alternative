@@ -16,6 +16,11 @@ export interface MembetterApi {
   app: {
     info(): Promise<Result<AppInfo>>;
   };
+  media: {
+    /** Validate and store a file under `id`. Fails with a clear message when the type or size is not allowed. */
+    put(id: string, bytes: Uint8Array, name: string): Promise<Result<null>>;
+    remove(id: string): Promise<Result<null>>;
+  };
   library: {
     /** Everything the learner has stored. */
     load(): Promise<Result<LibrarySnapshot>>;

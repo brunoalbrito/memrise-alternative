@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { getMedia } from "../../../shared/media/mediaStore";
+import { isDesktop } from "../../../shared/api";
+import { getMedia, mediaUrl } from "../../../shared/media/mediaStore";
 
-/** Object URL for a stored file, revoked when no longer needed. */
+/** URL for a stored file: served by the app in the desktop build, an object URL (revoked when unused) in the browser. */
 export function useMediaUrl(id: string): string | null {
+  const desktop = isDesktop();
   const [state, setState] = useState<{ id: string; url: string } | null>(null);
 
   useEffect(() => {
+    if (desktop) return;
     let cancelled = false;
     let created: string | null = null;
     getMedia(id)
@@ -19,7 +22,8 @@ export function useMediaUrl(id: string): string | null {
       cancelled = true;
       if (created) URL.revokeObjectURL(created);
     };
-  }, [id]);
+  }, [id, desktop]);
 
+  if (desktop) return mediaUrl(id);
   return state && state.id === id ? state.url : null;
 }
