@@ -1,3 +1,4 @@
+import { CreateCourseButton } from "./components/CreateCourseButton";
 import { EmptyState } from "./components/EmptyState";
 import { CourseCard } from "./components/CourseCard";
 import { FilterMenu } from "./components/FilterMenu";
@@ -15,7 +16,7 @@ export function HomePage() {
     <div className="min-h-screen bg-surface">
       <TopAppBar />
       <main className="mx-auto max-w-4xl px-4 pb-12 pt-8">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <h1 className="text-headline-medium text-on-surface">{filterName}</h1>
           {hasCourses && (
             <FilterMenu
@@ -24,6 +25,9 @@ export function HomePage() {
               onChange={setFilter}
             />
           )}
+          <div className="ml-auto">
+            <CreateCourseButton />
+          </div>
         </div>
         <HomeErrorBoundary>
           {!hasCourses ? (

@@ -1,4 +1,5 @@
 import type { Category, Course } from "../model/types";
+import { languageCategories } from "./languages";
 
 export const sampleCategories: Category[] = [
   { id: "computers", name: "Computers & Engineering", icon: "💻" },
@@ -95,6 +96,11 @@ export function getCourseById(id: string): Course | undefined {
   return sampleCourses.find((course) => course.id === id);
 }
 
+export const allCategories: Category[] = [
+  ...sampleCategories,
+  ...languageCategories,
+];
+
 export function getCategoryById(id: string): Category | undefined {
-  return sampleCategories.find((category) => category.id === id);
+  return allCategories.find((category) => category.id === id);
 }

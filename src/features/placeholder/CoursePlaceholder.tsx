@@ -1,10 +1,10 @@
 import { Link, useParams } from "react-router";
-import { TopAppBar, getCourseById } from "../home";
+import { TopAppBar, useCourse } from "../home";
 import { ComingSoonPage } from "./ComingSoonPage";
 
 export function CoursePlaceholder({ title }: { title: string }) {
   const { id = "" } = useParams();
-  const course = getCourseById(id);
+  const course = useCourse(id);
 
   if (!course) {
     return (
