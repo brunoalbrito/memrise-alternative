@@ -18,3 +18,10 @@ This folder keeps the full requirements, `research.md`, `data-model.md`, `contra
 Parallel options after 018: 019, 020 and 021 are independent. Minimum useful app: 016, 017, 018, 021, 022. Sharing: add 019. Safety net: 023. Optional: 024.
 
 Per child spec, run in order: `/speckit-plan` (reads these design files), `/speckit-tasks`, `/speckit-implement`. Set `.specify/feature.json` to the spec directory before each run.
+
+## Status (2026-10-18)
+
+Specs 016 to 025 are implemented on the branch `feat/local-first-desktop` (unit, integration and end-to-end tests pass on macOS).
+Open items, all needing the owner or other operating systems: code signing and notarization, an application icon, Windows and
+Linux installers and a real auto-update run, a manual import of the Anki package into Anki, and the per-course accent-tolerance
+setting (see `specs/021-typing-practice-screen/tasks.md`, T008).

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { LibraryTooNewError } from "../db/migrate";
 import { openLibrary, type OpenedLibrary } from "../db/connection";
 import { handle } from "../ipc/register";
@@ -19,6 +19,7 @@ import { CourseIdSchema, EndSessionSchema, MarkSchema, NewPerDaySchema, OutcomeS
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemSchema, ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
+import { setupAutoUpdate } from "./updater";
 import { createMainWindow } from "./window";
 
 let library: OpenedLibrary | null = null;
@@ -70,8 +71,13 @@ function registerIpc(): void {
       version: app.getVersion(),
       platform: process.platform,
       libraryVersion: library?.version ?? 0,
+      dataPath: join(app.getPath("userData"), "library"),
     },
   }));
+  handle("app:openDataFolder", null, async () => {
+    await shell.openPath(join(app.getPath("userData"), "library"));
+    return null;
+  });
   handle("media:put", MediaPutSchema, (input) => {
     try {
       media!.put(input.id, input.bytes, input.name);
@@ -252,6 +258,7 @@ function start(): void {
   handleMediaProtocol(media);
   registerIpc();
   createMainWindow();
+  setupAutoUpdate();
 }
 
 // Only one instance may open the library at a time.

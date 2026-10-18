@@ -17,10 +17,13 @@
     "build:web": "tsc -b && vite build",
     "test": "vitest run",
     "test:e2e": "pnpm build && playwright test",
-    "package": "pnpm build && electron-builder"
+    "package": "pnpm build && electron-builder",
+    "package:dir": "pnpm build && electron-builder --dir",
+    "test:packaged": "PACKAGED_APP=\"$PWD/release/mac-arm64/MemBetter.app/Contents/MacOS/MemBetter\" playwright test packaged"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -30,7 +33,6 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.2.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "4.3.3",
@@ -52,5 +54,6 @@
     "vitest": "^5.0.5"
   },
   "main": "out/main/index.js",
-  "description": "MemBetter: local-first vocabulary learning"
+  "description": "MemBetter: local-first vocabulary learning",
+  "author": "MemBetter"
 }

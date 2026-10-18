@@ -4,6 +4,7 @@ import type { MembetterApi } from "../shared/api";
 const api: MembetterApi = {
   app: {
     info: () => ipcRenderer.invoke("app:info"),
+    openDataFolder: () => ipcRenderer.invoke("app:openDataFolder"),
   },
   media: {
     put: (id, bytes, name) => ipcRenderer.invoke("media:put", { id, bytes, name }),

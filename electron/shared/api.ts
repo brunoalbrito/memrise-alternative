@@ -122,12 +122,16 @@ export interface AppInfo {
   version: string;
   platform: string;
   libraryVersion: number;
+  /** Folder that holds the library (database and media). */
+  dataPath: string;
 }
 
 /** Surface exposed to the renderer by the preload script. Grows with each feature. */
 export interface MembetterApi {
   app: {
     info(): Promise<Result<AppInfo>>;
+    /** Show the library folder in the file manager. */
+    openDataFolder(): Promise<Result<null>>;
   };
   media: {
     /** Validate and store a file under `id`. Fails with a clear message when the type or size is not allowed. */

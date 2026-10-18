@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { CreateCourseButton } from "./components/CreateCourseButton";
 import { EmptyState } from "./components/EmptyState";
 import { CourseCard } from "./components/CourseCard";
@@ -55,6 +56,11 @@ export function HomePage() {
             </ul>
           )}
         </HomeErrorBoundary>
+        <p className="mt-10 text-center text-body-medium text-on-surface-variant">
+          <Link to="/privacy" className="underline">
+            Privacy: what is stored and what is sent
+          </Link>
+        </p>
       </main>
     </div>
   );
