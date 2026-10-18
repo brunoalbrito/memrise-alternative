@@ -130,3 +130,12 @@ export interface ExportOutcome {
 export interface ImportOutcome {
   imported: number;
 }
+
+export const BackupConfigPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  folder: z.string().min(1).max(4096).optional(),
+  intervalDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).optional(),
+  keep: z.number().int().min(1).max(100).optional(),
+});
+export const BackupIdSchema = z.object({ id: z.string().min(1).max(100) });
+export type BackupConfigPatch = z.infer<typeof BackupConfigPatchSchema>;

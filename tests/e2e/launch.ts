@@ -11,8 +11,15 @@ export interface Launched {
 }
 
 /** Starts the built app with an isolated, temporary data folder. */
-export async function launch(userData = mkdtempSync(join(tmpdir(), "membetter-e2e-"))): Promise<Launched> {
-  const app = await electron.launch({ args: [".", `--user-data-dir=${userData}`] });
+export async function launch(
+  userData = mkdtempSync(join(tmpdir(), "membetter-e2e-")),
+  env: Record<string, string> = {},
+): Promise<Launched> {
+  const app = await electron.launch({
+    args: [".", `--user-data-dir=${userData}`],
+    // Backups never go to the real Documents folder during tests.
+    env: { ...process.env, MEMBETTER_BACKUP_FOLDER: join(userData, "backups"), ...env } as Record<string, string>,
+  });
   const page = await app.firstWindow();
   await page.waitForLoadState("domcontentloaded");
   return {

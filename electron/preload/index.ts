@@ -49,6 +49,14 @@ const api: MembetterApi = {
     mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
     setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
   },
+  backup: {
+    getConfig: () => ipcRenderer.invoke("backup:getConfig"),
+    setConfig: (patch) => ipcRenderer.invoke("backup:setConfig", patch),
+    chooseFolder: () => ipcRenderer.invoke("backup:chooseFolder"),
+    runNow: () => ipcRenderer.invoke("backup:runNow"),
+    list: () => ipcRenderer.invoke("backup:list"),
+    restore: (id) => ipcRenderer.invoke("backup:restore", { id }),
+  },
   library: {
     load: () => ipcRenderer.invoke("library:load"),
     apply: (change) => ipcRenderer.invoke("library:apply", change),

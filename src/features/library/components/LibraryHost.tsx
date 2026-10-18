@@ -37,6 +37,18 @@ export function LibraryHost() {
     };
   }, [startImport]);
 
+  // A failed automatic backup is shown once at start as a warning that does not block anything.
+  useEffect(() => {
+    void getApi()
+      .backup.getConfig()
+      .then((result) => {
+        if (result.ok && result.data.lastError) {
+          useExchangeStore.setState({ notice: { kind: "error", text: `Your last backup did not work. Open Backups to fix it. (${result.data.lastError})` } });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(dismiss, 8000);

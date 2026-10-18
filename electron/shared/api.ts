@@ -78,6 +78,20 @@ export interface CourseStats {
   longTerm: number;
 }
 
+export interface BackupConfigData {
+  enabled: boolean;
+  folder: string;
+  intervalDays: number;
+  keep: number;
+  lastAt: string | null;
+  lastError: string | null;
+}
+export interface BackupEntryData {
+  id: string;
+  createdAt: string;
+  sizeBytes: number;
+}
+
 /** Result envelope returned by every `window.api` call. */
 export type ApiError = { code: string; message: string };
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -142,6 +156,16 @@ export interface MembetterApi {
     stats(courseId: string): Promise<Result<CourseStats>>;
     mark(courseId: string, wordId: string, flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
     setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
+  };
+  backup: {
+    getConfig(): Promise<Result<BackupConfigData>>;
+    setConfig(patch: Partial<Pick<BackupConfigData, "enabled" | "folder" | "intervalDays" | "keep">>): Promise<Result<BackupConfigData>>;
+    /** Native folder picker. Returns the chosen folder, or null. */
+    chooseFolder(): Promise<Result<string | null>>;
+    runNow(): Promise<Result<BackupEntryData>>;
+    list(): Promise<Result<BackupEntryData[]>>;
+    /** Replaces the library with this backup and restarts the app. The current library is kept in a safety copy. */
+    restore(id: string): Promise<Result<null>>;
   };
   library: {
     /** Everything the learner has stored. */

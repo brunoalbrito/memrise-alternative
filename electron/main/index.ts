@@ -8,6 +8,8 @@ import { z } from "zod";
 import { MediaError, MediaStore } from "../services/media";
 import { handleMediaProtocol, registerMediaScheme } from "./protocol";
 import { ExchangeError, importArchive, previewOf, readArchive, writeArchive, type ParsedArchive } from "../services/exchange";
+import { Backups, restoreBackup } from "../services/backup";
+import { BackupConfigPatchSchema, BackupIdSchema } from "../shared/schemas";
 import { AiService } from "../services/ai/service";
 import { Secrets } from "../services/secrets";
 import { Settings } from "../services/settings";
@@ -23,6 +25,8 @@ let media: MediaStore | null = null;
 let secrets: Secrets | null = null;
 let ai: AiService | null = null;
 let study: Study | null = null;
+let backups: Backups | null = null;
+let backupTimer: ReturnType<typeof setInterval> | null = null;
 
 registerMediaScheme();
 
@@ -165,6 +169,31 @@ function registerIpc(): void {
     return null;
   });
   handle("study:end", EndSessionSchema, ({ sessionId, status }) => study!.end(sessionId, status));
+  handle("backup:getConfig", null, () => backups!.config());
+  handle("backup:setConfig", BackupConfigPatchSchema, (patch) => backups!.setConfig(patch));
+  handle("backup:chooseFolder", null, async () => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options = { title: "Choose a backup folder", properties: ["openDirectory" as const, "createDirectory" as const] };
+    const choice = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    return choice.canceled ? null : (choice.filePaths[0] ?? null);
+  });
+  handle("backup:runNow", null, () => backups!.create());
+  handle("backup:list", null, () => backups!.list());
+  handle("backup:restore", BackupIdSchema, ({ id }) => {
+    const libraryDir = join(app.getPath("userData"), "library");
+    restoreBackup({
+      backups: backups!,
+      id,
+      libraryDir,
+      mediaDir: join(libraryDir, "media"),
+      currentSettingsRows: library!.db.prepare("SELECT key, value FROM settings WHERE key LIKE 'ai.%Key.%'").all() as { key: string; value: string }[],
+      closeDb: () => library!.db.close(),
+    });
+    // The restored library is opened by a fresh start.
+    app.relaunch();
+    app.exit(0);
+    return null;
+  });
   handle("library:load", null, () => loadLibrary(library!.db));
   handle("library:apply", LibraryChangeSchema, (change) => {
     applyChange(library!.db, change);
@@ -192,6 +221,15 @@ function start(): void {
   const settings = new Settings(library.db);
   secrets = new Secrets(settings, osCipher);
   ai = new AiService(secrets, settings, shrinkImage);
+  backups = new Backups(
+    library.db,
+    settings,
+    join(app.getPath("userData"), "library", "media"),
+    process.env["MEMBETTER_BACKUP_FOLDER"] ?? join(app.getPath("documents"), "MemBetter Backups"),
+  );
+  // Automatic backups run in the background and never block the app; a failure is remembered and shown as a warning.
+  void backups.runIfDue();
+  backupTimer = setInterval(() => void backups?.runIfDue(), 60 * 60 * 1000);
   handleMediaProtocol(media);
   registerIpc();
   createMainWindow();
@@ -228,5 +266,8 @@ if (!app.requestSingleInstanceLock()) {
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
   });
-  app.on("will-quit", () => library?.db.close());
+  app.on("will-quit", () => {
+    if (backupTimer) clearInterval(backupTimer);
+    library?.db.close();
+  });
 }
