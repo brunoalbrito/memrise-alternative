@@ -6,7 +6,8 @@ export type AiErrorKind =
   | "refused"
   | "unusable"
   | "service"
-  | "audio";
+  | "audio"
+  | "image";
 
 /** Never put the API key or raw response bodies in the message. */
 export class AiError extends Error {
@@ -37,5 +38,7 @@ export function aiMessage(kind: AiErrorKind): string {
       return "The AI service had a problem. Try again later.";
     case "audio":
       return "Audio could not be created.";
+    case "image":
+      return "Image could not be created.";
   }
 }

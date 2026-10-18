@@ -31,7 +31,49 @@ export function LevelsTab({ course }: { course: Course }) {
   const languageName =
     languages.find((language) => language.id === course.teachingLanguageId)?.name ?? "";
 
-  /** Fills Meaning, Example and IPA from an AI suggestion and attaches its audio when possible. */
+  /** Validates, stores and attaches a generated file. Returns a notice when it was skipped. */
+  const attachBlob = async (
+    levelId: string,
+    wordId: string,
+    kind: "images" | "audio",
+    blob: Blob,
+    fileName: string,
+    type: string,
+  ): Promise<string | null> => {
+    const word = getCourseLevels(course.id)
+      .find((item) => item.id === levelId)
+      ?.words.find((item) => item.id === wordId);
+    if (!word) return null;
+    const file = new File([blob], fileName, { type });
+    const problem = validateMediaFile(file, kind, word[kind].length);
+    if (problem) {
+      if (problem === "A word can have at most 5 audio files.") {
+        return "This word already has 5 audio files.";
+      }
+      if (problem === "A word can have at most 5 images.") {
+        return "This word already has 5 images.";
+      }
+      return problem;
+    }
+    if (!storageWritable()) return FILE_ERROR;
+    const ref: MediaRef = {
+      id: `media-${crypto.randomUUID()}`,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    };
+    try {
+      await putMedia(ref.id, file);
+    } catch {
+      return FILE_ERROR;
+    }
+    if (!apply((current) => ops.attachMedia(current, levelId, wordId, kind, ref))) {
+      return FILE_ERROR;
+    }
+    return null;
+  };
+
+  /** Fills Meaning, Example and IPA from an AI suggestion and attaches its audio and image when possible. */
   const applyAutoFill = async (levelId: string, wordId: string, result: AutoFillResult) => {
     if (
       !run((current) =>
@@ -44,40 +86,21 @@ export function LevelsTab({ course }: { course: Course }) {
     ) {
       return;
     }
-    if (!result.audio) return;
-
-    const level = getCourseLevels(course.id).find((item) => item.id === levelId);
-    const word = level?.words.find((item) => item.id === wordId);
+    const word = getCourseLevels(course.id)
+      .find((item) => item.id === levelId)
+      ?.words.find((item) => item.id === wordId);
     if (!word) return;
-    const file = new File([result.audio], `${slug(word.text)}.wav`, { type: "audio/wav" });
-    const problem = validateMediaFile(file, "audio", word.audio.length);
-    if (problem) {
-      setError(
-        problem === "A word can have at most 5 audio files."
-          ? "This word already has 5 audio files."
-          : problem,
-      );
-      return;
+    const base = slug(word.text);
+    const notices: string[] = [];
+    if (result.audio) {
+      const notice = await attachBlob(levelId, wordId, "audio", result.audio, `${base}.wav`, "audio/wav");
+      if (notice) notices.push(notice);
     }
-    if (!storageWritable()) {
-      setError(FILE_ERROR);
-      return;
+    if (result.image) {
+      const notice = await attachBlob(levelId, wordId, "images", result.image, `${base}.jpg`, "image/jpeg");
+      if (notice) notices.push(notice);
     }
-    const ref: MediaRef = {
-      id: `media-${crypto.randomUUID()}`,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    };
-    try {
-      await putMedia(ref.id, file);
-    } catch {
-      setError(FILE_ERROR);
-      return;
-    }
-    if (!apply((current) => ops.attachMedia(current, levelId, wordId, "audio", ref))) {
-      setError(FILE_ERROR);
-    }
+    if (notices.length > 0) setError(notices.join(" "));
   };
 
   const run = (change: (current: typeof levels) => typeof levels) => {

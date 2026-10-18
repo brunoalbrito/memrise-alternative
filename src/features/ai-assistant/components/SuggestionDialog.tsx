@@ -8,6 +8,7 @@ export interface AutoFillResult {
   sentence: string;
   ipa: string;
   audio: Blob | null;
+  image: Blob | null;
 }
 
 interface SuggestionDialogProps {
@@ -16,6 +17,22 @@ interface SuggestionDialogProps {
   onApply: (result: AutoFillResult) => void;
   onClose: () => void;
   onOpenSettings: () => void;
+}
+
+function ImagePreview({ blob, word }: { blob: Blob; word: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const created = URL.createObjectURL(blob);
+    queueMicrotask(() => setUrl(created));
+    return () => URL.revokeObjectURL(created);
+  }, [blob]);
+  return url ? (
+    <img
+      src={url}
+      alt={`Illustration for "${word}"`}
+      className="aspect-square w-full max-w-64 rounded-m3-md object-cover"
+    />
+  ) : null;
 }
 
 function AudioPreview({ blob }: { blob: Blob }) {
@@ -38,7 +55,10 @@ export function SuggestionDialog({
   onOpenSettings,
 }: SuggestionDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { state, retry, select, cancel } = useSuggestions(word, languageName);
+  const { state, image, retry, select, newImage, cancel } = useSuggestions(
+    word,
+    languageName,
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -156,6 +176,33 @@ export function SuggestionDialog({
             )}
           </section>
 
+          <section className="mt-4">
+            <h3 className="text-label-large font-medium text-on-surface-variant">Image</h3>
+            {image.status === "loading" && (
+              <p aria-live="polite" className="mt-1 text-body-medium">
+                Creating image…
+              </p>
+            )}
+            {image.status === "ready" && (
+              <div className="mt-1 flex flex-col items-start gap-2">
+                <ImagePreview blob={image.blob} word={state.suggestion.word} />
+                <Button variant="text" onClick={newImage}>
+                  New image
+                </Button>
+              </div>
+            )}
+            {image.status === "error" && (
+              <div className="mt-1 flex flex-col items-start gap-2">
+                <p aria-live="assertive" role="alert" className="text-body-medium text-error">
+                  {aiMessage(image.kind)}
+                </p>
+                <Button variant="text" onClick={newImage}>
+                  New image
+                </Button>
+              </div>
+            )}
+          </section>
+
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button variant="text" onClick={retry}>
               Try again
@@ -164,17 +211,22 @@ export function SuggestionDialog({
               Cancel
             </Button>
             <Button
+              disabled={image.status === "loading"}
               onClick={() => {
                 onApply({
                   definition: state.suggestion.definition,
                   sentence: state.suggestion.sentences[state.selected],
                   ipa: state.suggestion.ipa,
                   audio: state.suggestion.audio,
+                  image: image.status === "ready" ? image.blob : null,
                 });
                 close();
               }}
             >
               Apply
+              {image.status === "loading" && (
+                <span className="sr-only"> (waiting for the image)</span>
+              )}
             </Button>
           </div>
         </>

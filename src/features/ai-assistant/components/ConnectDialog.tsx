@@ -17,12 +17,14 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const apiKey = useAiStore((state) => state.apiKey);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
+  const imageModel = useAiStore((state) => state.imageModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
+  const [imageInput, setImageInput] = useState(imageModel);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -43,11 +45,14 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
 
   const test = async () => {
     setStatus("Testing…");
-    const { apiKey: key, textModel: text, speechModel: speech } = useAiStore.getState();
+    const { apiKey: key, textModel: text, speechModel: speech, imageModel: image } = useAiStore.getState();
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort("timeout"), 15000);
     try {
-      await testConnection({ apiKey: key, textModel: text, speechModel: speech }, controller.signal);
+      await testConnection(
+        { apiKey: key, textModel: text, speechModel: speech, imageModel: image },
+        controller.signal,
+      );
       setStatus("Connection works.");
     } catch (error) {
       setStatus(error instanceof AiError ? aiMessage(error.kind) : aiMessage("service"));
@@ -71,8 +76,8 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         for a word.
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
-        The word and the course language are sent to Google. Your key is stored on this device only
-        and is never shown in full. Remove it on shared computers.
+        The word, the sentence you choose and the course language are sent to Google. Your key is
+        stored on this device only and is never shown in full. Remove it on shared computers.
       </p>
       <p className="mt-2 text-body-medium">
         <a
@@ -170,6 +175,17 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               className={`${inputClasses} mt-1`}
             />
           </div>
+          <div>
+            <label htmlFor="ai-image-model" className="text-label-large font-medium">
+              Image model
+            </label>
+            <input
+              id="ai-image-model"
+              value={imageInput}
+              onChange={(event) => setImageInput(event.target.value)}
+              className={`${inputClasses} mt-1`}
+            />
+          </div>
           <p aria-live="polite" className="min-h-6 text-body-medium">
             {modelsStatus}
           </p>
@@ -178,7 +194,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               variant="tonal"
               onClick={() =>
                 setModelsStatus(
-                  useAiStore.getState().setModels(textInput, speechInput)
+                  useAiStore.getState().setModels(textInput, speechInput, imageInput)
                     ? "Models saved."
                     : "Enter model names without spaces.",
                 )
@@ -190,9 +206,11 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               variant="text"
               onClick={() => {
                 useAiStore.getState().restoreModels();
-                const { textModel: text, speechModel: speech } = useAiStore.getState();
+                const { textModel: text, speechModel: speech, imageModel: image } =
+                  useAiStore.getState();
                 setTextInput(text);
                 setSpeechInput(speech);
+                setImageInput(image);
                 setModelsStatus("Defaults restored.");
               }}
             >
