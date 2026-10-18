@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
   { path: "/course/:id", element: <CourseDetailPage /> },
   {
     path: "/course/:id/review",
-    element: <CoursePlaceholder title="Review" />,
+    element: <CoursePlaceholder title="Classic review" />,
   },
   {
     path: "/course/:id/speed-review",

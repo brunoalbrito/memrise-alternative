@@ -56,3 +56,16 @@ export function availableCategories(
     courses.some((course) => course.categoryId === category.id),
   );
 }
+
+export type SessionKind = "classic-review" | "learn-new-words";
+
+/** The session offered first in the session dialog. */
+export function recommendedSession(course: Course): SessionKind {
+  return course.itemsDue > 0 ? "classic-review" : "learn-new-words";
+}
+
+/** Badge text for the number of words due: nothing for 0, "99+" from 99. */
+export function dueBadge(due: number): string | null {
+  if (due <= 0) return null;
+  return due >= 99 ? "99+" : String(due);
+}

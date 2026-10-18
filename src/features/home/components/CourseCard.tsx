@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "../../../shared/ui/Button";
 import { IconButton } from "../../../shared/ui/IconButton";
@@ -8,6 +9,7 @@ import type { Course, GoalValue } from "../model/types";
 import { CourseOptionsMenu } from "./CourseOptionsMenu";
 import { CourseStats } from "./CourseStats";
 import { ProgressBar } from "./ProgressBar";
+import { SessionDialog } from "./SessionDialog";
 
 interface CourseCardProps {
   course: Course;
@@ -16,6 +18,8 @@ interface CourseCardProps {
 
 export function CourseCard({ course, goal }: CourseCardProps) {
   const navigate = useNavigate();
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const gridButtonRef = useRef<HTMLButtonElement>(null);
   const percent = percentLearned(course);
   const action = primaryAction(course);
   const category = getCategoryById(course.categoryId);
@@ -87,12 +91,23 @@ export function CourseCard({ course, goal }: CourseCardProps) {
             {action === "speed-review" ? "Speed review" : "Learn new words"}
           </Button>
           <IconButton
+            ref={gridButtonRef}
             variant="tonal"
-            aria-label="Levels and items"
-            onClick={() => navigate(`/course/${course.id}`)}
+            aria-label="Choose a session"
+            aria-haspopup="dialog"
+            onClick={() => setSessionOpen(true)}
           >
             <AppsIcon />
           </IconButton>
+          {sessionOpen && (
+            <SessionDialog
+              course={course}
+              onClose={() => {
+                setSessionOpen(false);
+                gridButtonRef.current?.focus();
+              }}
+            />
+          )}
         </div>
       </div>
     </article>

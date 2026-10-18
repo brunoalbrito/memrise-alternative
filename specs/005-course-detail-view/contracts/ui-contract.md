@@ -1,5 +1,7 @@
 # UI Contract: Course Detail View
 
+> Update: the Home grid button now opens the session dialog (see `specs/015-session-picker`); the course page opens from the course title.
+
 ## Routes
 
 | Path | Screen | Notes |
