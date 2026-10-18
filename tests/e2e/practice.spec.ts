@@ -47,7 +47,7 @@ test("practice by typing, tiles, hint and giving up, with every answer recorded"
     await expect(page.getByRole("heading", { name: "Practice course" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Show keyboard shortcuts" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Close" })).toBeVisible();
-    await expect(page.getByLabel("WORD")).toBeVisible();
+    await expect(page.getByLabel("WORD", { exact: true })).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Session progress" })).toHaveAttribute("aria-valuetext", "0 of 3");
     await expect(page.getByText("where you wash dishes")).toBeVisible(); // no image: the meaning is the clue
     await expect(page.getByRole("group", { name: "Letters" }).getByRole("button")).toHaveCount(4);
@@ -64,10 +64,10 @@ test("practice by typing, tiles, hint and giving up, with every answer recorded"
     // Word 2: number keys, backspace and a hint (Alt+H works while the input is focused).
     await expect(page.getByText("to clean with water")).toBeVisible();
     await page.keyboard.press("Alt+h");
-    await expect(page.getByLabel("WORD")).toHaveValue("w");
+    await expect(page.getByLabel("WORD", { exact: true })).toHaveValue("w");
     await page.keyboard.press("a");
     await page.keyboard.press("Backspace");
-    await expect(page.getByLabel("WORD")).toHaveValue("w");
+    await expect(page.getByLabel("WORD", { exact: true })).toHaveValue("w");
     await typeWithTiles(page, "ash");
     await expect(page.getByText("Correct!")).toBeVisible();
     await expect(page.getByLabel("Points")).toHaveText("17"); // 10 + (10 - 3 for one hint)
@@ -77,7 +77,7 @@ test("practice by typing, tiles, hint and giving up, with every answer recorded"
     await expect(page.getByRole("group", { name: "Letters" }).getByRole("button")).toHaveCount(14);
     await page.keyboard.press("Control+Enter");
     await expect(page.getByText("The word is “laundry folding”")).toBeVisible();
-    await expect(page.getByLabel("WORD")).toHaveValue("laundry folding");
+    await expect(page.getByLabel("WORD", { exact: true })).toHaveValue("laundry folding");
     await page.keyboard.press("Enter");
 
     // Summary: the word without any prompt was skipped.
@@ -107,15 +107,15 @@ test("closing mid-session asks first and keeps the answers given", async () => {
   try {
     await seed(page);
     await page.evaluate(() => {
-      location.hash = "#/course/custom-p/review";
+      location.hash = "#/course/custom-p/learn";
     });
-    await expect(page.getByLabel("WORD")).toBeVisible();
+    await expect(page.getByLabel("WORD", { exact: true })).toBeVisible();
     await page.keyboard.type("sink");
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "End this session?" })).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByLabel("WORD")).toBeVisible();
+    await expect(page.getByLabel("WORD", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Close" }).click();
     await page.getByRole("button", { name: "End session" }).click();
     await expect(page).toHaveURL(/#\/course\/custom-p$/);

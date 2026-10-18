@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApi, isDesktop } from "../../../shared/api";
 import { mediaUrl } from "../../../shared/media/mediaStore";
-import type { CourseLevel, Word } from "../../home";
-import { buildQueue } from "../model/queue";
+import { useProgressStore, type Word } from "../../home";
 import { resultOf, wordPoints, type WordResult } from "../model/points";
 import { lettersOf } from "../model/text";
 import { hashSeed, makeTiles } from "../model/tiles";
@@ -41,11 +40,10 @@ const RULES: Rules = { accentTolerant: false };
  * Runs one practice session: which word is on screen, what the learner typed, hints, feedback, points,
  * and recording every answer. Closing the screen never loses answers that were already given.
  */
-export function usePracticeSession(courseId: string, kind: PracticeKind, levels: CourseLevel[]) {
-  const queue = useMemo(() => buildQueue(levels), [levels]);
+export function usePracticeSession(courseId: string, kind: PracticeKind, planned: Word[], skipped: number) {
   // The list is fixed for the session even if the course is edited meanwhile.
-  const [words] = useState<Word[]>(queue.words);
-  const skipped = queue.skipped;
+  const [words] = useState<Word[]>(planned);
+  const [skips, setSkips] = useState(0);
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("answering");
@@ -121,7 +119,10 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, levels:
   // Close the session record when the session is over.
   useEffect(() => {
     if (!finished) return;
-    void sessionId.current?.then((id) => (id ? getApi().study.endSession(id, "completed") : null)).catch(() => null);
+    void sessionId.current
+      ?.then((id) => (id ? getApi().study.endSession(id, "completed") : null))
+      .catch(() => null)
+      .then(() => useProgressStore.getState().refresh());
   }, [finished]);
 
   const afterChange = (next: WordState) => {
@@ -207,7 +208,18 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, levels:
   const exit = () => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     const answered = totals.answered > 0;
-    void sessionId.current?.then((id) => (id ? getApi().study.endSession(id, answered ? "completed" : "abandoned") : null)).catch(() => null);
+    void sessionId.current
+      ?.then((id) => (id ? getApi().study.endSession(id, answered ? "completed" : "abandoned") : null))
+      .catch(() => null)
+      .then(() => useProgressStore.getState().refresh());
+  };
+
+  /** Marks the current word as ignored or long-term; it is left out of this and later sessions and the session moves on. */
+  const mark = (flag: "ignored" | "longTerm") => {
+    if (busy || !word) return;
+    if (isDesktop()) void getApi().study.mark(courseId, word.id, flag, true).catch(() => null);
+    setSkips((n) => n + 1);
+    goNext();
   };
 
   return {
@@ -219,6 +231,8 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, levels:
     phase,
     finished,
     totals,
+    done: totals.answered + skips,
+    mark,
     shake,
     remainingMs,
     display: word ? (phase === "revealed" ? word.text : displayText(state, word.text)) : "",

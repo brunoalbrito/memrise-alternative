@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import type { ImportChoice, ImportPreview } from "../../../../electron/shared/schemas";
+import type { ExportItem, ImportChoice, ImportPreview } from "../../../../electron/shared/schemas";
 import { getApi } from "../../../shared/api";
-import { useLearnerStore } from "../../home";
+import { useLearnerStore, useProgressStore } from "../../home";
 import { exportItemFor, exportItemsForAll } from "../model/exportItems";
 import type { Course } from "../../home";
 
@@ -14,13 +14,17 @@ interface ExchangeState {
   busy: string | null;
   progress: { done: number; total: number } | null;
   preview: ImportPreview | null;
+  /** Courses waiting for the learner to confirm an export (and choose whether to include progress). */
+  pendingExport: ExportItem[] | null;
   notice: Notice | null;
   dismissNotice: () => void;
-  exportCourse: (course: Course) => Promise<void>;
-  exportLibrary: () => Promise<void>;
+  exportCourse: (course: Course) => void;
+  exportLibrary: () => void;
+  confirmExport: (includeProgress: boolean) => Promise<void>;
+  cancelExport: () => void;
   /** Pick a file with the native dialog, or use `path` (drop or OS open), then show the import dialog. */
   startImport: (path?: string) => Promise<void>;
-  commitImport: (choice: ImportChoice) => Promise<void>;
+  commitImport: (choice: ImportChoice, includeProgress?: boolean) => Promise<void>;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -28,13 +32,13 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export const useExchangeStore = create<ExchangeState>()((set, get) => {
   const fail = (text: string) => set({ busy: null, progress: null, notice: { kind: "error", text } });
 
-  const runExport = async (items: ReturnType<typeof exportItemsForAll>, label: string) => {
+  const runExport = async (items: ExportItem[], label: string, includeProgress: boolean) => {
     if (get().busy) return;
     // Make sure edits waiting to be saved are part of the file.
     set({ busy: label, progress: null, notice: null });
     const off = getApi().exchange.onProgress((done, total) => set({ progress: { done, total } }));
     try {
-      const result = await getApi().exchange.exportItems(items);
+      const result = await getApi().exchange.exportItems(items, includeProgress);
       if (!result.ok) return fail(result.error.message);
       if (!result.data.saved) return set({ busy: null, progress: null });
       const missing = result.data.missingMedia > 0 ? ` ${plural(result.data.missingMedia, "file")} could not be found and ${result.data.missingMedia === 1 ? "was" : "were"} left out.` : "";
@@ -54,13 +58,20 @@ export const useExchangeStore = create<ExchangeState>()((set, get) => {
     busy: null,
     progress: null,
     preview: null,
+    pendingExport: null,
     notice: null,
     dismissNotice: () => set({ notice: null }),
-    exportCourse: (course) => runExport([exportItemFor(course)], "Exporting…"),
-    exportLibrary: async () => {
+    exportCourse: (course) => set({ pendingExport: [exportItemFor(course)], notice: null }),
+    exportLibrary: () => {
       const items = exportItemsForAll();
       if (items.length === 0) return set({ notice: { kind: "info", text: "There are no courses to export." } });
-      await runExport(items, "Exporting…");
+      set({ pendingExport: items, notice: null });
+    },
+    cancelExport: () => set({ pendingExport: null }),
+    confirmExport: async (includeProgress) => {
+      const items = get().pendingExport;
+      set({ pendingExport: null });
+      if (items) await runExport(items, "Exporting…", includeProgress);
     },
     startImport: async (path) => {
       if (get().busy || get().preview) return;
@@ -80,15 +91,16 @@ export const useExchangeStore = create<ExchangeState>()((set, get) => {
         fail("The file could not be read.");
       }
     },
-    commitImport: async (choice) => {
+    commitImport: async (choice, includeProgress) => {
       const preview = get().preview;
       if (!preview) return;
       set({ preview: null, busy: choice === "cancel" ? null : "Importing…" });
       try {
-        const result = await getApi().exchange.commit(preview.token, choice);
+        const result = await getApi().exchange.commit(preview.token, choice, includeProgress);
         if (!result.ok) return fail(result.error.message);
         if (choice === "cancel") return set({ busy: null });
         await useLearnerStore.getState().hydrate();
+        await useProgressStore.getState().refresh();
         const missing = preview.missingMedia > 0 ? ` ${plural(preview.missingMedia, "file")} were missing from the file.` : "";
         set({
           busy: null,

@@ -6,6 +6,7 @@ import type Database from "better-sqlite3";
 import { strFromU8, strToU8, unzipSync, Zip, ZipDeflate, ZipPassThrough } from "fflate";
 import { z } from "zod";
 import { applyChange } from "./library";
+import { ProgressFileSchema, type CardExport, type Study } from "./study";
 import { MediaError, MediaStore, sniff, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES } from "./media";
 import {
   CourseSchema,
@@ -80,6 +81,7 @@ export async function writeArchive(
   outPath: string,
   onProgress: (done: number, total: number) => void = () => {},
   now: () => Date = () => new Date(),
+  progress?: Study,
 ): Promise<ExportResult> {
   const kind = items.length === 1 ? "course" : "library";
   const tmp = `${outPath}.${process.pid}.tmp`;
@@ -149,6 +151,13 @@ export async function writeArchive(
     });
     if (kind === "course") addJson("course.json", fileCourses[0]);
     else for (const fc of fileCourses) addJson(`courses/${fc.course.id}/course.json`, fc);
+    if (progress) {
+      // Study progress is only written when the learner asked for it.
+      items.forEach((item, i) => {
+        const cards = progress.cardsFor(item.levels.flatMap((l) => l.words.map((w) => w.id)));
+        if (cards.length > 0) addJson(kind === "course" ? "progress.json" : `courses/${fileCourses[i]!.course.id}/progress.json`, { cards });
+      });
+    }
 
     let done = 0;
     for (const m of pending) {
@@ -174,15 +183,18 @@ export async function writeArchive(
 export interface ParsedArchive {
   kind: "course" | "library";
   courses: FileCourse[];
+  /** Study progress per course (same order as `courses`), when the file carries it. */
+  progress: (CardExport[] | null)[];
   media: Map<string, { bytes: Uint8Array; ext: string }>;
   missingMedia: number;
 }
 
 const MEDIA_NAME = /^media\/([0-9a-f]{64})\.(png|jpg|gif|webp|wav|ogg|m4a|aac|mp3)$/;
 const LIB_COURSE = /^courses\/[A-Za-z0-9_-]{1,100}\/course\.json$/;
+const LIB_PROGRESS = /^courses\/[A-Za-z0-9_-]{1,100}\/progress\.json$/;
 
 function allowedName(name: string): boolean {
-  return name === "manifest.json" || name === "course.json" || name === "progress.json" || MEDIA_NAME.test(name) || LIB_COURSE.test(name);
+  return name === "manifest.json" || name === "course.json" || name === "progress.json" || MEDIA_NAME.test(name) || LIB_COURSE.test(name) || LIB_PROGRESS.test(name);
 }
 
 const parseJson = <T extends z.ZodType>(entry: Uint8Array | undefined, schema: T, label: string): z.infer<T> => {
@@ -236,10 +248,18 @@ export function readArchive(path: string): ParsedArchive {
   }
 
   const courses: FileCourse[] = [];
-  if (manifest.kind === "course") courses.push(parseJson(files["course.json"], FileCourseSchema, "the course"));
-  else {
+  const progress: (CardExport[] | null)[] = [];
+  const readProgress = (name: string) => {
+    const entry = files[name];
+    return entry ? parseJson(entry, ProgressFileSchema, "the progress").cards : null;
+  };
+  if (manifest.kind === "course") {
+    courses.push(parseJson(files["course.json"], FileCourseSchema, "the course"));
+    progress.push(readProgress("progress.json"));
+  } else {
     for (const name of Object.keys(files).filter((n) => LIB_COURSE.test(n)).sort()) {
       courses.push(parseJson(files[name], FileCourseSchema, "a course"));
+      progress.push(readProgress(name.replace(/course\.json$/, "progress.json")));
     }
     if (courses.length === 0) throw new ExchangeError("validation_failed", "The library file has no courses.");
   }
@@ -264,7 +284,7 @@ export function readArchive(path: string): ParsedArchive {
       }
     }
   }
-  return { kind: manifest.kind, courses, media, missingMedia };
+  return { kind: manifest.kind, courses, progress, media, missingMedia };
 }
 
 // ---- Import: apply ------------------------------------------------------------------------------------------
@@ -283,6 +303,7 @@ export function previewOf(db: Db, parsed: ParsedArchive, token: string): ImportP
     token,
     kind: parsed.kind,
     missingMedia: parsed.missingMedia,
+    hasProgress: parsed.progress.some((p) => p !== null),
     courses: parsed.courses.map((fc) => {
       const words = fc.levels.flatMap((l) => l.words);
       const hashes = new Set(words.flatMap((w) => [...w.images, ...w.audio].map((r) => r.hash)));
@@ -298,16 +319,23 @@ export function previewOf(db: Db, parsed: ParsedArchive, token: string): ImportP
 }
 
 /** Imports every course in one transaction. On any failure the library is unchanged. */
-export function importArchive(db: Db, media: MediaStore, parsed: ParsedArchive, choice: Exclude<ImportChoice, "cancel">): number {
+export function importArchive(
+  db: Db,
+  media: MediaStore,
+  parsed: ParsedArchive,
+  choice: Exclude<ImportChoice, "cancel">,
+  study?: Study,
+): number {
   try {
     db.transaction(() => {
-      for (const fc of parsed.courses) {
+      for (const [position, fc] of parsed.courses.entries()) {
         const wanted = targetId(fc.course.id);
         const exists = courseExists(db, wanted);
         const copy = exists && choice === "copy";
         const id = copy ? `custom-${randomUUID()}` : wanted;
         const title = copy ? `${fc.course.title} (copy)`.slice(0, 100) : fc.course.title;
 
+        const newWordId = new Map<string, string>();
         const levels: CourseLevelData[] = fc.levels.map((level) => ({
           id: randomUUID(),
           name: level.name,
@@ -320,8 +348,10 @@ export function importArchive(db: Db, media: MediaStore, parsed: ParsedArchive, 
               media.put(newId, file.bytes, ref.name);
               return { id: newId, name: ref.name, type: ref.type, size: file.bytes.length };
             };
+            const wordId = randomUUID();
+            newWordId.set(word.id, wordId);
             return {
-              id: randomUUID(),
+              id: wordId,
               text: word.text,
               meaning: word.meaning,
               example: word.example,
@@ -345,6 +375,16 @@ export function importArchive(db: Db, media: MediaStore, parsed: ParsedArchive, 
         };
         applyChange(db, { type: "upsertCourse", course });
         applyChange(db, { type: "saveLevels", courseId: id, levels });
+        const cards = parsed.progress[position];
+        if (study && cards) {
+          study.importCards(
+            id,
+            cards.flatMap((card) => {
+              const mapped = newWordId.get(card.wordId);
+              return mapped ? [{ ...card, wordId: mapped }] : [];
+            }),
+          );
+        }
       }
     })();
   } catch (error) {

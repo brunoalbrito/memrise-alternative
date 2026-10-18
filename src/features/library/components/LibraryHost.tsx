@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { getApi } from "../../../shared/api";
 import { useExchangeStore } from "../store/exchangeStore";
+import { ExportDialog } from "./ExportDialog";
 import { ImportDialog } from "./ImportDialog";
 
 /** Mounted once in the desktop app: drag and drop, "open with", progress and result messages. */
@@ -8,6 +9,7 @@ export function LibraryHost() {
   const busy = useExchangeStore((s) => s.busy);
   const progress = useExchangeStore((s) => s.progress);
   const preview = useExchangeStore((s) => s.preview);
+  const pendingExport = useExchangeStore((s) => s.pendingExport);
   const notice = useExchangeStore((s) => s.notice);
   const dismiss = useExchangeStore((s) => s.dismissNotice);
   const startImport = useExchangeStore((s) => s.startImport);
@@ -44,6 +46,7 @@ export function LibraryHost() {
   return (
     <>
       {preview && <ImportDialog preview={preview} />}
+      {pendingExport && <ExportDialog count={pendingExport.length} />}
       <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4" role="status" aria-live="polite">
         {(busy || notice) && (
           <div

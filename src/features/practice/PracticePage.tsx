@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { getApi, isDesktop } from "../../shared/api";
 import { Button } from "../../shared/ui/Button";
 import { IconButton } from "../../shared/ui/IconButton";
-import { BackspaceIcon, CloseIcon, HelpIcon, KeyboardIcon, SparkleIcon, WaterDropIcon } from "../../shared/ui/icons";
-import { useCourse, useCourseLevels, languages } from "../home";
+import { BackspaceIcon, BoltIcon, CloseIcon, HelpIcon, KeyboardIcon, RemoveCircleIcon, SparkleIcon, WaterDropIcon } from "../../shared/ui/icons";
+import { languages, useCourse, useCourseLevels, wordHasText, type Word } from "../home";
 import { ExitDialog } from "./components/ExitDialog";
 import { LetterTile } from "./components/LetterTile";
 import { SessionSummary } from "./components/SessionSummary";
 import { WordClue } from "./components/WordClue";
 import { SPEED_SECONDS, usePracticeSession, type PracticeKind } from "./hooks/usePracticeSession";
+import { SESSION_SIZE } from "./model/queue";
+import { hasPrompt } from "./model/queue";
 import { tileShortcut } from "./model/tiles";
 import { isUsed } from "./model/word";
 
@@ -23,11 +26,72 @@ function readShortcuts(): boolean {
   }
 }
 
+interface Planned {
+  words: Word[];
+  skipped: number;
+  /** Why there is nothing to practice, shown instead of the screen. */
+  empty: string | null;
+}
+
+const formatDue = (iso: string): string =>
+  new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+
+/** Chooses the words of a session: new words to learn, or words that are due (desktop), in the order of the course. */
+function usePlanned(courseId: string, kind: PracticeKind, round: number): Planned | null {
+  const levels = useCourseLevels(courseId);
+  const [result, setResult] = useState<{ key: string; planned: Planned } | null>(null);
+  const key = `${courseId}:${kind}:${round}`;
+  const candidates = useMemo(() => {
+    const all = levels.flatMap((level) => level.words).filter(wordHasText);
+    return { usable: all.filter(hasPrompt), skipped: all.length - all.filter(hasPrompt).length };
+  }, [levels]);
+  const latest = useRef(candidates);
+  useEffect(() => {
+    latest.current = candidates;
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const { usable, skipped } = latest.current;
+    const byId = new Map(usable.map((w) => [w.id, w]));
+    const done = (value: Planned) => {
+      if (!cancelled) setResult({ key, planned: value });
+    };
+    if (!isDesktop()) {
+      done({ words: usable.slice(0, SESSION_SIZE), skipped, empty: usable.length === 0 ? "none" : null });
+      return;
+    }
+    getApi()
+      .study.plan(courseId, kind, usable.map((w) => w.id))
+      .then((result) => {
+        if (!result.ok) return done({ words: [], skipped, empty: "Your progress could not be read. Try again." });
+        const words = result.data.wordIds.flatMap((id) => byId.get(id) ?? []);
+        let empty: string | null = null;
+        if (words.length === 0) {
+          if (usable.length === 0) empty = "none";
+          else if (kind === "learn") {
+            empty = result.data.newLeft === 0 ? "You have learned all the new words planned for today. Come back tomorrow, or raise the daily limit in the course options." : "There are no new words left in this course. Try a review.";
+          } else {
+            empty = result.data.nextDueAt ? `Nothing to review right now. The next words are due ${formatDue(result.data.nextDueAt)}.` : "Nothing to review yet. Learn some new words first.";
+          }
+        }
+        done({ words, skipped, empty });
+      })
+      .catch(() => done({ words: [], skipped, empty: "Your progress could not be read. Try again." }));
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, kind, round, key]);
+
+  // A result planned for another course, kind or round is never shown.
+  return result?.key === key ? result.planned : null;
+}
+
 export function PracticePage({ kind }: { kind: PracticeKind }) {
   const { id = "" } = useParams();
   const course = useCourse(id);
-  const levels = useCourseLevels(id);
   const [round, setRound] = useState(0);
+  const planned = usePlanned(id, kind, round);
 
   if (!course) {
     return (
@@ -39,22 +103,41 @@ export function PracticePage({ kind }: { kind: PracticeKind }) {
       </main>
     );
   }
-  // A new key restarts the session ("Practice again").
-  return <Session key={round} courseId={id} title={course.title} kind={kind} levels={levels} languageId={course.teachingLanguageId} onAgain={() => setRound((n) => n + 1)} />;
+  if (!planned) {
+    return (
+      <main aria-busy="true" className="flex min-h-screen items-center justify-center bg-surface">
+        <p className="text-body-large text-on-surface-variant">Preparing your session…</p>
+      </main>
+    );
+  }
+  // A new key restarts the session ("Practice again" plans it again).
+  return (
+    <Session
+      key={`${id}:${kind}:${round}`}
+      courseId={id}
+      title={course.title}
+      kind={kind}
+      planned={planned}
+      languageId={course.teachingLanguageId}
+      onAgain={() => {
+        setRound((n) => n + 1);
+      }}
+    />
+  );
 }
 
 interface SessionProps {
   courseId: string;
   title: string;
   kind: PracticeKind;
-  levels: ReturnType<typeof useCourseLevels>;
+  planned: Planned;
   languageId?: string;
   onAgain: () => void;
 }
 
-function Session({ courseId, title, kind, levels, languageId, onAgain }: SessionProps) {
+function Session({ courseId, title, kind, planned, languageId, onAgain }: SessionProps) {
   const navigate = useNavigate();
-  const s = usePracticeSession(courseId, kind, levels);
+  const s = usePracticeSession(courseId, kind, planned.words, planned.skipped);
   const [showShortcuts, setShowShortcuts] = useState(readShortcuts);
   const [exiting, setExiting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -161,11 +244,23 @@ function Session({ courseId, title, kind, levels, languageId, onAgain }: Session
       <div className="min-h-screen bg-surface">
         {header}
         <main className="mx-auto flex max-w-xl flex-col items-center gap-4 px-4 py-16 text-center">
-          <h1 className="text-headline-medium text-on-surface">Nothing to practice yet</h1>
-          <p className="text-body-large text-on-surface-variant">Add words with a picture, meaning or example to this course first.</p>
-          <Link to={`/course/${courseId}/edit`} className="text-label-large font-medium text-primary underline">
-            Edit course
-          </Link>
+          {planned.empty === "none" || planned.empty === null ? (
+            <>
+              <h1 className="text-headline-medium text-on-surface">Nothing to practice yet</h1>
+              <p className="text-body-large text-on-surface-variant">Add words with a picture, meaning or example to this course first.</p>
+              <Link to={`/course/${courseId}/edit`} className="text-label-large font-medium text-primary underline">
+                Edit course
+              </Link>
+            </>
+          ) : (
+            <>
+              <h1 className="text-headline-medium text-on-surface">{kind === "learn" ? "No new words for now" : "All caught up"}</h1>
+              <p className="text-body-large text-on-surface-variant">{planned.empty}</p>
+              <Link to={`/course/${courseId}`} className="text-label-large font-medium text-primary underline">
+                Back to the course
+              </Link>
+            </>
+          )}
         </main>
       </div>
     );
@@ -191,11 +286,11 @@ function Session({ courseId, title, kind, levels, languageId, onAgain }: Session
             aria-label="Session progress"
             aria-valuemin={0}
             aria-valuemax={s.total}
-            aria-valuenow={s.totals.answered}
-            aria-valuetext={`${s.totals.answered} of ${s.total}`}
+            aria-valuenow={s.done}
+            aria-valuetext={`${s.done} of ${s.total}`}
             className="h-8 flex-1 overflow-hidden rounded-full bg-surface-variant"
           >
-            <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${(s.totals.answered / s.total) * 100}%` }} />
+            <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${(s.done / s.total) * 100}%` }} />
           </div>
           <div aria-live="polite" aria-label="Points" className="min-w-14 rounded-full bg-surface-container-high px-4 py-1 text-center text-label-large font-medium">
             {s.totals.points}
@@ -271,6 +366,14 @@ function Session({ courseId, title, kind, levels, languageId, onAgain }: Session
                 {showShortcuts && <span aria-hidden="true" className="text-label-medium opacity-70">{isMac ? "⌘↵" : "Ctrl+↵"}</span>}
               </button>
             )}
+            <div className="flex gap-2" role="group" aria-label="Word options">
+              <IconButton aria-label="Ignore this word" title="Ignore this word" disabled={busy} onClick={() => s.mark("ignored")}>
+                <RemoveCircleIcon />
+              </IconButton>
+              <IconButton aria-label="I know this word already" title="I know this word already" disabled={busy} onClick={() => s.mark("longTerm")}>
+                <BoltIcon />
+              </IconButton>
+            </div>
             {kind === "speed" && (
               <div role="timer" aria-label="Time left" className="text-title-large font-medium tabular-nums text-on-surface">
                 {Math.ceil(s.remainingMs / 1000)}s

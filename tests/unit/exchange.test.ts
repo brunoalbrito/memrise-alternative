@@ -9,6 +9,7 @@ import { openLibrary } from "../../electron/db/connection";
 import { ExchangeError, importArchive, previewOf, readArchive, writeArchive } from "../../electron/services/exchange";
 import { applyChange, loadLibrary } from "../../electron/services/library";
 import { MediaStore } from "../../electron/services/media";
+import { Study } from "../../electron/services/study";
 import type { CourseData, CourseLevelData, ExportItem } from "../../electron/shared/schemas";
 
 const png = (seed: number): Uint8Array => {
@@ -175,6 +176,59 @@ describe("round trip", () => {
     expect(await writeArchive([item], a.media, file)).toEqual({ courses: 1, missingMedia: 1 });
     const parsed = readArchive(file);
     expect(parsed.missingMedia).toBe(0);
+  });
+});
+
+describe("study progress", () => {
+  const answer = (study: Study, ...ids: string[]) => {
+    const sessionId = study.start({ courseId: "custom-1", kind: "learn", wordCount: ids.length });
+    for (const id of ids) {
+      study.answer({ sessionId, wordId: id, result: "correct", hintsUsed: 0, attempts: 0, elapsedMs: 4000, points: 10 });
+    }
+  };
+
+  it("is left out unless asked for, and restored only when the importer accepts it", async () => {
+    const a = newLib();
+    const item = seed(a);
+    const studyA = new Study(a.db);
+    answer(studyA, "w1");
+    studyA.mark({ courseId: "custom-1", wordId: "w2", flag: "ignored", value: true });
+
+    const plain = join(a.dir, "plain.membetter");
+    await writeArchive([item], a.media, plain);
+    expect(previewOf(a.db, readArchive(plain), "t").hasProgress).toBe(false);
+
+    const withProgress = join(a.dir, "progress.membetter");
+    await writeArchive([item], a.media, withProgress, undefined, undefined, studyA);
+    expect(previewOf(a.db, readArchive(withProgress), "t").hasProgress).toBe(true);
+
+    // Importing without accepting progress starts fresh.
+    const b = newLib();
+    importArchive(b.db, b.media, readArchive(withProgress), "replace", undefined);
+    expect(b.db.prepare("SELECT COUNT(*) AS n FROM cards").get()).toEqual({ n: 0 });
+
+    // Importing with progress maps cards to the new word ids.
+    const c = newLib();
+    importArchive(c.db, c.media, readArchive(withProgress), "replace", new Study(c.db));
+    const snap = loadLibrary(c.db);
+    const words = snap.courseLevels["custom-1"]![0]!.words;
+    const progress = new Study(c.db).progress().cards;
+    expect(progress[words[0]!.id]).toMatchObject({ learned: true, ignored: false });
+    expect(progress[words[1]!.id]).toMatchObject({ learned: false, ignored: true });
+    expect(Object.keys(progress).sort()).toEqual([words[0]!.id, words[1]!.id].sort());
+    expect(c.db.prepare("SELECT course_id FROM cards LIMIT 1").get()).toEqual({ course_id: "custom-1" });
+  });
+
+  it("a library file keeps progress per course", async () => {
+    const a = newLib();
+    const one = seed(a, "custom-1");
+    const studyA = new Study(a.db);
+    answer(studyA, "w1");
+    const two = { course: { ...baseCourse("custom-2"), title: "Second course" }, levels: [] as CourseLevelData[] };
+    const file = join(a.dir, "lib.membetter");
+    await writeArchive([one, two], a.media, file, undefined, undefined, studyA);
+    const parsed = readArchive(file);
+    expect(parsed.progress.map((p) => p?.length ?? 0)).toEqual([1, 0]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ImportPreview } from "../../../../electron/shared/schemas";
 import { Button } from "../../../shared/ui/Button";
 import { useExchangeStore } from "../store/exchangeStore";
@@ -8,6 +8,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export function ImportDialog({ preview }: { preview: ImportPreview }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const commit = useExchangeStore((s) => s.commitImport);
+  const [withProgress, setWithProgress] = useState(false);
   const conflicts = preview.courses.filter((c) => c.conflict).length;
 
   useEffect(() => {
@@ -46,6 +47,17 @@ export function ImportDialog({ preview }: { preview: ImportPreview }) {
           {plural(preview.missingMedia, "file")} referenced by the file {preview.missingMedia === 1 ? "is" : "are"} missing and will be left out.
         </p>
       )}
+      {preview.hasProgress && (
+        <label className="mt-3 flex min-h-10 items-center gap-3 text-body-medium">
+          <input
+            type="checkbox"
+            checked={withProgress}
+            onChange={(event) => setWithProgress(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Also restore the study progress in this file
+        </label>
+      )}
       {conflicts > 0 && (
         <p className="mt-3 text-body-medium text-on-surface-variant">
           Replace overwrites the existing {conflicts === 1 ? "course" : "courses"}. Import as copy keeps both.
@@ -57,15 +69,15 @@ export function ImportDialog({ preview }: { preview: ImportPreview }) {
         </Button>
         {conflicts > 0 ? (
           <>
-            <Button variant="text" onClick={() => void commit("copy")}>
+            <Button variant="text" onClick={() => void commit("copy", withProgress)}>
               Import as copy
             </Button>
-            <Button variant="filled" onClick={() => void commit("replace")}>
+            <Button variant="filled" onClick={() => void commit("replace", withProgress)}>
               Replace
             </Button>
           </>
         ) : (
-          <Button variant="filled" onClick={() => void commit("replace")}>
+          <Button variant="filled" onClick={() => void commit("replace", withProgress)}>
             Import
           </Button>
         )}

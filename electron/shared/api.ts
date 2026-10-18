@@ -45,6 +45,39 @@ export interface SessionSummary {
   points: number;
 }
 
+export type PracticeKind = SessionKind;
+
+export interface StudyPlan {
+  wordIds: string[];
+  dueCount: number;
+  newLeft: number;
+  nextDueAt: string | null;
+}
+
+export interface CardProgress {
+  learned: boolean;
+  /** Empty for a word that has not been answered yet. */
+  dueAt: string;
+  ignored: boolean;
+  longTerm: boolean;
+}
+
+export interface StudyProgress {
+  cards: Record<string, CardProgress>;
+  practicedToday: Record<string, number>;
+  newPerDay: Record<string, number>;
+}
+
+export interface CourseStats {
+  streakDays: number;
+  last14: { day: string; reviews: number }[];
+  recallPercent: number | null;
+  totalReviews: number;
+  learned: number;
+  ignored: number;
+  longTerm: number;
+}
+
 /** Result envelope returned by every `window.api` call. */
 export type ApiError = { code: string; message: string };
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -68,13 +101,13 @@ export interface MembetterApi {
   };
   exchange: {
     /** Ask where to save, then write a .membetter file with these courses (one course, or a whole library). */
-    exportItems(items: ExportItem[]): Promise<Result<ExportOutcome>>;
+    exportItems(items: ExportItem[], includeProgress?: boolean): Promise<Result<ExportOutcome>>;
     /** Show the native open dialog. Returns the chosen path, or null. */
     pickFile(): Promise<Result<string | null>>;
     /** Read and validate a file without changing the library. */
     inspect(path: string): Promise<Result<ImportPreview>>;
     /** Apply a previously inspected file. */
-    commit(token: string, choice: ImportChoice): Promise<Result<ImportOutcome>>;
+    commit(token: string, choice: ImportChoice, includeProgress?: boolean): Promise<Result<ImportOutcome>>;
     /** Local path of a dropped file. */
     pathForFile(file: File): string;
     /** Called when the OS asks the app to open a .membetter file. Returns an unsubscribe function. */
@@ -102,6 +135,13 @@ export interface MembetterApi {
     /** Records one answer and returns the running totals. */
     answer(sessionId: string, outcome: AnswerOutcome): Promise<Result<SessionSummary>>;
     endSession(sessionId: string, status: "completed" | "abandoned"): Promise<Result<SessionSummary>>;
+    /** Which of these words (in this order) a session of this kind should contain. */
+    plan(courseId: string, kind: SessionKind, wordIds: string[]): Promise<Result<StudyPlan>>;
+    /** Learned, due, ignored and long-term state of every word that has been practiced. */
+    progress(): Promise<Result<StudyProgress>>;
+    stats(courseId: string): Promise<Result<CourseStats>>;
+    mark(courseId: string, wordId: string, flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
+    setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
   };
   library: {
     /** Everything the learner has stored. */

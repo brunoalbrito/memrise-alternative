@@ -38,10 +38,6 @@ export const router = createRouter([
   { path: "/course/:id/edit/details", element: <CourseEditorPage tab="details" /> },
   { path: "/course/:id/edit/databases", element: <CourseEditorPage tab="databases" /> },
   { path: "/course/:id/edit/contributors", element: <CourseEditorPage tab="contributors" /> },
-  {
-    path: "/course/:id/leaderboard",
-    element: <CoursePlaceholder title="Leaderboard" />,
-  },
   { path: "/course/:id/levels/:level", element: <LevelPlaceholder /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

@@ -10,10 +10,10 @@ const api: MembetterApi = {
     remove: (id) => ipcRenderer.invoke("media:remove", { id }),
   },
   exchange: {
-    exportItems: (items) => ipcRenderer.invoke("exchange:export", { items }),
+    exportItems: (items, includeProgress) => ipcRenderer.invoke("exchange:export", { items, includeProgress }),
     pickFile: () => ipcRenderer.invoke("exchange:pickFile"),
     inspect: (path) => ipcRenderer.invoke("exchange:inspect", { path }),
-    commit: (token, choice) => ipcRenderer.invoke("exchange:commit", { token, choice }),
+    commit: (token, choice, includeProgress) => ipcRenderer.invoke("exchange:commit", { token, choice, includeProgress }),
     pathForFile: (file) => webUtils.getPathForFile(file),
     onOpenFile: (callback) => {
       const listener = (_event: unknown, path: string) => callback(path);
@@ -43,6 +43,11 @@ const api: MembetterApi = {
     startSession: (courseId, kind, wordCount) => ipcRenderer.invoke("study:start", { courseId, kind, wordCount }),
     answer: (sessionId, outcome) => ipcRenderer.invoke("study:answer", { sessionId, ...outcome }),
     endSession: (sessionId, status) => ipcRenderer.invoke("study:end", { sessionId, status }),
+    plan: (courseId, kind, wordIds) => ipcRenderer.invoke("study:plan", { courseId, kind, wordIds }),
+    progress: () => ipcRenderer.invoke("study:progress"),
+    stats: (courseId) => ipcRenderer.invoke("study:stats", { courseId }),
+    mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
+    setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
   },
   library: {
     load: () => ipcRenderer.invoke("library:load"),

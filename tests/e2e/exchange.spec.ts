@@ -32,6 +32,7 @@ test("exports a course to a file and imports it into another library", async () 
     const card = a.page.getByRole("listitem").filter({ hasText: "Shared course" });
     await card.getByRole("button", { name: /options/i }).click();
     await a.page.getByRole("menuitem", { name: "Export course" }).click();
+    await a.page.getByRole("button", { name: "Export", exact: true }).click();
     await expect(a.page.getByText("Exported 1 course.")).toBeVisible();
     expect(existsSync(file)).toBe(true);
   } finally {

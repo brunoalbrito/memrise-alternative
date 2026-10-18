@@ -90,11 +90,17 @@ export const ExportItemSchema = z.object({
   levels: z.array(CourseLevelSchema).max(500),
 });
 export type ExportItem = z.infer<typeof ExportItemSchema>;
-export const ExportItemsSchema = z.object({ items: z.array(ExportItemSchema).min(1).max(1000) });
+export const ExportItemsSchema = z.object({
+  items: z.array(ExportItemSchema).min(1).max(1000),
+  /** Include the learner's study progress (default: content only). */
+  includeProgress: z.boolean().optional(),
+});
 
 export const ImportChoiceSchema = z.object({
   token: z.string().min(1).max(100),
   choice: z.enum(["replace", "copy", "cancel"]),
+  /** Also restore the progress stored in the file (only when the file has some). */
+  includeProgress: z.boolean().optional(),
 });
 export type ImportChoice = z.infer<typeof ImportChoiceSchema>["choice"];
 
@@ -110,6 +116,8 @@ export interface ImportPreview {
   token: string;
   kind: "course" | "library";
   courses: ImportPreviewCourse[];
+  /** The file also carries the exporter's study progress. */
+  hasProgress: boolean;
   /** Media referenced by the file that it did not include. */
   missingMedia: number;
 }

@@ -12,7 +12,7 @@ import { AiService } from "../services/ai/service";
 import { Secrets } from "../services/secrets";
 import { Settings } from "../services/settings";
 import { osCipher, shrinkImage } from "./secureStorage";
-import { EndSessionSchema, OutcomeSchema, Study, StartSessionSchema } from "../services/study";
+import { CourseIdSchema, EndSessionSchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, Study, StartSessionSchema } from "../services/study";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
@@ -81,14 +81,21 @@ function registerIpc(): void {
     media!.remove(input.id);
     return null;
   });
-  handle("exchange:export", ExportItemsSchema, async ({ items }) => {
+  handle("exchange:export", ExportItemsSchema, async ({ items, includeProgress }) => {
     const win = BrowserWindow.getFocusedWindow() ?? undefined;
     const suggested = items.length === 1 ? items[0]!.course.title.replace(/[^\p{L}\p{N} _-]/gu, "").trim() || "course" : "MemBetter library";
     const options = { title: "Export", defaultPath: `${suggested}.membetter`, filters: FILE_FILTER };
     const choice = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
     if (choice.canceled || !choice.filePath) return { saved: false, courses: 0, missingMedia: 0 };
     const path = choice.filePath.endsWith(".membetter") ? choice.filePath : `${choice.filePath}.membetter`;
-    const result = await writeArchive(items, media!, path, (done, total) => win?.webContents.send("exchange:progress", done, total));
+    const result = await writeArchive(
+      items,
+      media!,
+      path,
+      (done, total) => win?.webContents.send("exchange:progress", done, total),
+      undefined,
+      includeProgress ? study! : undefined,
+    );
     return { saved: true, path, ...result };
   });
   handle("exchange:pickFile", null, async () => {
@@ -104,12 +111,12 @@ function registerIpc(): void {
     staged = { token, parsed };
     return previewOf(library!.db, parsed, token);
   });
-  handle("exchange:commit", ImportChoiceSchema, ({ token, choice }) => {
+  handle("exchange:commit", ImportChoiceSchema, ({ token, choice, includeProgress }) => {
     const current = staged;
     staged = null;
     if (!current || current.token !== token) throw new ExchangeError("validation_failed", "Choose the file again.");
     if (choice === "cancel") return { imported: 0 };
-    return { imported: importArchive(library!.db, media!, current.parsed, choice) };
+    return { imported: importArchive(library!.db, media!, current.parsed, choice, includeProgress ? study! : undefined) };
   });
   ipcMain.on("exchange:ready", () => {
     rendererReady = true;
@@ -146,6 +153,17 @@ function registerIpc(): void {
   handle("ai:wordImage", WordImageSchema, ({ word, sentence }) => ai!.wordImage(word, sentence));
   handle("study:start", StartSessionSchema, (input) => study!.start(input));
   handle("study:answer", OutcomeSchema, (outcome) => study!.answer(outcome));
+  handle("study:plan", PlanSchema, (input) => study!.plan(input));
+  handle("study:progress", null, () => study!.progress());
+  handle("study:stats", CourseIdSchema, ({ courseId }) => study!.stats(courseId));
+  handle("study:mark", MarkSchema, (input) => {
+    study!.mark(input);
+    return null;
+  });
+  handle("study:setNewPerDay", NewPerDaySchema, ({ courseId, value }) => {
+    study!.setNewPerDay(courseId, value);
+    return null;
+  });
   handle("study:end", EndSessionSchema, ({ sessionId, status }) => study!.end(sessionId, status));
   handle("library:load", null, () => loadLibrary(library!.db));
   handle("library:apply", LibraryChangeSchema, (change) => {

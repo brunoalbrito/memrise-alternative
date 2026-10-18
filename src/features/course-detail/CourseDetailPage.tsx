@@ -1,9 +1,9 @@
 import { Link, useNavigate, useParams } from "react-router";
 import { TopAppBar } from "../home";
 import { CourseHeader } from "./components/CourseHeader";
-import { LeaderboardPanel } from "./components/LeaderboardPanel";
 import { LevelsSection } from "./components/LevelsSection";
 import { ProgressSummary } from "./components/ProgressSummary";
+import { StatsPanel } from "./components/StatsPanel";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 
 export function CourseDetailPage() {
@@ -65,7 +65,7 @@ export function CourseDetailPage() {
               editHref={`/course/${course.id}/edit`}
             />
           </div>
-          <LeaderboardPanel courseId={course.id} />
+          <StatsPanel courseId={course.id} />
         </div>
       </main>
     </div>
