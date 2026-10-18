@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "../../../shared/ui/Button";
 import { AddIcon, EditIcon } from "../../../shared/ui/icons";
+import type { AutoFillResult } from "../../ai-assistant";
 import type { CourseLevel, MediaRef, Word } from "../../home";
 import type { MediaKind } from "../model/levelOps";
 import { DeleteLevelDialog } from "./DeleteLevelDialog";
@@ -21,8 +22,9 @@ interface LevelEditorProps {
   onAddWord: () => void;
   onUpdateWord: (
     wordId: string,
-    patch: Partial<Pick<Word, "text" | "meaning" | "example">>,
+    patch: Partial<Pick<Word, "text" | "meaning" | "example" | "ipa">>,
   ) => void;
+  onAutoFill: (wordId: string, result: AutoFillResult) => void;
   onDeleteWord: (wordId: string) => void;
   onAddMedia: (wordId: string, kind: MediaKind, ref: MediaRef) => boolean;
   onRemoveMedia: (wordId: string, kind: MediaKind, mediaId: string) => void;
@@ -44,6 +46,7 @@ export function LevelEditor({
   onDelete,
   onAddWord,
   onUpdateWord,
+  onAutoFill,
   onDeleteWord,
   onAddMedia,
   onRemoveMedia,
@@ -111,6 +114,7 @@ export function LevelEditor({
                 <th scope="col" className="px-2 py-2">Word</th>
                 <th scope="col" className="px-2 py-2">Images</th>
                 <th scope="col" className="px-2 py-2">Audio</th>
+                <th scope="col" className="px-2 py-2">IPA</th>
                 <th scope="col" className="px-2 py-2">Meaning</th>
                 <th scope="col" className="px-2 py-2">Example</th>
                 {showAttributes && (
@@ -128,7 +132,9 @@ export function LevelEditor({
                   word={word}
                   showAttributes={showAttributes}
                   autoFocus={focusWordId === word.id}
+                  languageName={languageName}
                   onChange={(patch) => onUpdateWord(word.id, patch)}
+                  onAutoFill={(result) => onAutoFill(word.id, result)}
                   onDelete={() => onDeleteWord(word.id)}
                   onAddMedia={(kind, ref) => onAddMedia(word.id, kind, ref)}
                   onRemoveMedia={(kind, mediaId) =>

@@ -108,7 +108,7 @@ export function updateWord(
   levels: CourseLevel[],
   levelId: string,
   wordId: string,
-  patch: Partial<Pick<Word, "text" | "meaning" | "example">>,
+  patch: Partial<Pick<Word, "text" | "meaning" | "example" | "ipa">>,
 ): CourseLevel[] {
   return mapWord(levels, levelId, wordId, (word) => ({ ...word, ...patch }));
 }

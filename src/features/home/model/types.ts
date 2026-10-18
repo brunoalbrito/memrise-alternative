@@ -88,6 +88,8 @@ export interface Word {
   text: string;
   meaning: string;
   example: string;
+  /** Plain text, stored without surrounding slashes. Missing means empty. */
+  ipa?: string;
   /** At most 5 entries, each an image */
   images: MediaRef[];
   /** At most 5 entries, each an audio file */

@@ -2,12 +2,25 @@ import { useState } from "react";
 import { Button } from "../../../shared/ui/Button";
 import { AddIcon } from "../../../shared/ui/icons";
 import { storageWritable } from "../../../shared/storage/storageWritable";
-import { languages, type Course } from "../../home";
+import { putMedia } from "../../../shared/media/mediaStore";
+import { AiSettingsButton, type AutoFillResult } from "../../ai-assistant";
+import { getCourseLevels, languages, type Course, type MediaRef } from "../../home";
 import { useLevels } from "../hooks/useLevels";
 import * as ops from "../model/levelOps";
+import { validateMediaFile } from "../model/mediaRules";
 import { LevelEditor } from "./LevelEditor";
 
 const STORAGE_ERROR = "Could not save your change on this device. Please try again.";
+const FILE_ERROR = "Could not save the file on this device. Please try again.";
+
+function slug(word: string): string {
+  const cleaned = word
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]/gu, "");
+  return cleaned === "" ? "word" : cleaned;
+}
 
 export function LevelsTab({ course }: { course: Course }) {
   const { levels, apply } = useLevels(course.id);
@@ -17,6 +30,55 @@ export function LevelsTab({ course }: { course: Course }) {
 
   const languageName =
     languages.find((language) => language.id === course.teachingLanguageId)?.name ?? "";
+
+  /** Fills Meaning, Example and IPA from an AI suggestion and attaches its audio when possible. */
+  const applyAutoFill = async (levelId: string, wordId: string, result: AutoFillResult) => {
+    if (
+      !run((current) =>
+        ops.updateWord(current, levelId, wordId, {
+          meaning: result.definition,
+          example: result.sentence,
+          ipa: result.ipa,
+        }),
+      )
+    ) {
+      return;
+    }
+    if (!result.audio) return;
+
+    const level = getCourseLevels(course.id).find((item) => item.id === levelId);
+    const word = level?.words.find((item) => item.id === wordId);
+    if (!word) return;
+    const file = new File([result.audio], `${slug(word.text)}.wav`, { type: "audio/wav" });
+    const problem = validateMediaFile(file, "audio", word.audio.length);
+    if (problem) {
+      setError(
+        problem === "A word can have at most 5 audio files."
+          ? "This word already has 5 audio files."
+          : problem,
+      );
+      return;
+    }
+    if (!storageWritable()) {
+      setError(FILE_ERROR);
+      return;
+    }
+    const ref: MediaRef = {
+      id: `media-${crypto.randomUUID()}`,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    };
+    try {
+      await putMedia(ref.id, file);
+    } catch {
+      setError(FILE_ERROR);
+      return;
+    }
+    if (!apply((current) => ops.attachMedia(current, levelId, wordId, "audio", ref))) {
+      setError(FILE_ERROR);
+    }
+  };
 
   const run = (change: (current: typeof levels) => typeof levels) => {
     if (!storageWritable() || !apply(change)) {
@@ -37,6 +99,7 @@ export function LevelsTab({ course }: { course: Course }) {
         >
           Add Level
         </Button>
+        <AiSettingsButton />
         <label className="inline-flex min-h-10 items-center gap-2 text-label-large font-medium text-on-surface">
           <input
             type="checkbox"
@@ -77,6 +140,7 @@ export function LevelsTab({ course }: { course: Course }) {
               });
               if (saved) setFocusWordId(wordId);
             }}
+            onAutoFill={(wordId, result) => void applyAutoFill(level.id, wordId, result)}
             onUpdateWord={(wordId, patch) =>
               run((current) => ops.updateWord(current, level.id, wordId, patch))
             }
