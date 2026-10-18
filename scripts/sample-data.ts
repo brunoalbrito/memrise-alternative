@@ -1,4 +1,27 @@
-import type { CourseLevel } from "../model/types";
+/**
+ * Sample courses for development and demos. They are NOT part of the app: `pnpm samples` turns them into a
+ * `.membetter` library file that you import like any other file (Import button on Home).
+ */
+
+export interface SampleWord {
+  id: string;
+  text: string;
+  meaning: string;
+  example: string;
+}
+export interface SampleLevel {
+  id: string;
+  name: string;
+  tested: string;
+  words: SampleWord[];
+}
+export interface SampleCourse {
+  id: string;
+  title: string;
+  teachingLanguageId: string;
+  speakersLanguageId: string;
+  levels: SampleLevel[];
+}
 
 type Seed = {
   name: string;
@@ -7,7 +30,6 @@ type Seed = {
 };
 
 interface CourseSeed {
-  learned: number;
   levels: Seed[];
 }
 
@@ -16,7 +38,6 @@ const TEST_MEANING = "Test on Meaning, prompt with Word.";
 
 const seeds: Record<string, CourseSeed> = {
   "english-visual-dictionary": {
-    learned: 9,
     levels: [
       {
         name: "First Level",
@@ -55,7 +76,6 @@ const seeds: Record<string, CourseSeed> = {
     ],
   },
   "irregular-verbs": {
-    learned: 0,
     levels: [
       { name: "Common Verbs", tested: TEST_MEANING, words: [["be", "was / were / been"], ["have", "had / had"], ["do", "did / done"]] },
       { name: "Past Forms", tested: TEST_MEANING, words: [["go", "went / gone"], ["see", "saw / seen"], ["take", "took / taken"]] },
@@ -64,7 +84,6 @@ const seeds: Record<string, CourseSeed> = {
     ],
   },
   "english-polyglot": {
-    learned: 0,
     levels: [
       { name: "Greetings", tested: TEST_MEANING, words: [["hello", "a common greeting"], ["good morning", "a greeting used before noon"], ["see you later", "a friendly goodbye"], ["nice to meet you", "said when meeting someone for the first time"]] },
       { name: "Daily Life", tested: TEST_MEANING, words: [["commute", "to travel regularly between home and work"], ["groceries", "food and other items bought at a shop"], ["chore", "a small job you do regularly at home"], ["appointment", "an arranged time to meet someone"]] },
@@ -72,14 +91,12 @@ const seeds: Record<string, CourseSeed> = {
     ],
   },
   "japanese-hiragana": {
-    learned: 10,
     levels: [
       { name: "Vowels and K", tested: TEST_MEANING, words: [["あ", "a"], ["い", "i"], ["う", "u"], ["え", "e"], ["お", "o"]] },
       { name: "S and T", tested: TEST_MEANING, words: [["さ", "sa"], ["し", "shi"], ["す", "su"], ["せ", "se"], ["そ", "so"]] },
     ],
   },
   "japanese-n5-vocab": {
-    learned: 5,
     levels: [
       { name: "Numbers", tested: TEST_MEANING, words: [["一", "one"], ["二", "two"], ["三", "three"], ["四", "four"]] },
       { name: "People", tested: TEST_MEANING, words: [["私", "I, me"], ["友達", "friend"], ["先生", "teacher"], ["学生", "student"]] },
@@ -87,14 +104,12 @@ const seeds: Record<string, CourseSeed> = {
     ],
   },
   "spanish-mexico-basics": {
-    learned: 4,
     levels: [
       { name: "Greetings", tested: TEST_MEANING, words: [["hola", "hello"], ["buenos días", "good morning"], ["buenas noches", "good night"], ["¿cómo estás?", "how are you?"], ["mucho gusto", "nice to meet you"]] },
       { name: "Ordering Food", tested: TEST_MEANING, words: [["la cuenta", "the bill"], ["un taco", "a taco"], ["agua, por favor", "water, please"], ["está delicioso", "it is delicious"], ["sin picante", "not spicy"]] },
     ],
   },
   "networking-fundamentals": {
-    learned: 2,
     levels: [
       { name: "Layers", tested: TEST_MEANING, words: [["physical layer", "the layer that moves raw bits over a medium"], ["data link layer", "the layer that moves frames between neighboring devices"], ["network layer", "the layer that routes packets between networks"], ["transport layer", "the layer that provides end-to-end delivery"]] },
       { name: "Addressing", tested: TEST_MEANING, words: [["IP address", "a number that identifies a device on a network"], ["subnet mask", "a value that splits an address into network and host parts"], ["MAC address", "a hardware address of a network interface"], ["gateway", "a device that connects a network to other networks"]] },
@@ -102,27 +117,26 @@ const seeds: Record<string, CourseSeed> = {
   },
 };
 
-export const sampleLevels: Record<string, CourseLevel[]> = Object.fromEntries(
-  Object.entries(seeds).map(([courseId, seed]) => {
-    let learnedLeft = seed.learned;
-    const levels: CourseLevel[] = seed.levels.map((level, i) => ({
-      id: `sample-${courseId}-l${i}`,
-      name: level.name,
-      tested: level.tested,
-      words: level.words.map(([text, meaning, example], j) => {
-        const learned = learnedLeft > 0;
-        if (learned) learnedLeft -= 1;
-        return {
-          id: `sample-${courseId}-l${i}-w${j}`,
-          text,
-          meaning,
-          example: example ?? "",
-          images: [],
-          audio: [],
-          learned,
-        };
-      }),
-    }));
-    return [courseId, levels];
-  }),
-);
+
+const info: Record<string, { title: string; teaching: string; speakers: string }> = {
+  "english-visual-dictionary": { title: "English Visual Dictionary", teaching: "en-gb", speakers: "en-gb" },
+  "irregular-verbs": { title: "Learn English Irregular Verbs", teaching: "en-gb", speakers: "en-gb" },
+  "english-polyglot": { title: "Learn English for Polyglots", teaching: "en-gb", speakers: "en-gb" },
+  "japanese-hiragana": { title: "Japanese Hiragana Starter", teaching: "ja", speakers: "en-gb" },
+  "japanese-n5-vocab": { title: "Japanese N5 Essential Vocabulary", teaching: "ja", speakers: "en-gb" },
+  "spanish-mexico-basics": { title: "Spanish (Mexico) Everyday Phrases", teaching: "es-mx", speakers: "en-gb" },
+  "networking-fundamentals": { title: "Computer Networking Fundamentals", teaching: "en-us", speakers: "en-us" },
+};
+
+export const sampleCourses: SampleCourse[] = Object.entries(seeds).map(([key, seed]) => ({
+  id: `custom-sample-${key}`,
+  title: info[key]!.title,
+  teachingLanguageId: info[key]!.teaching,
+  speakersLanguageId: info[key]!.speakers,
+  levels: seed.levels.map((level, i) => ({
+    id: `sample-${key}-l${i}`,
+    name: level.name,
+    tested: level.tested,
+    words: level.words.map(([text, meaning, example], j) => ({ id: `sample-${key}-l${i}-w${j}`, text, meaning, example: example ?? "" })),
+  })),
+}));

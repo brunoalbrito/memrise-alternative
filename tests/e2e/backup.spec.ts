@@ -55,7 +55,7 @@ test("a backup folder that cannot be used shows a warning without blocking the a
   try {
     await app.page.reload();
     await expect(app.page.getByText(/Your last backup did not work/)).toBeVisible({ timeout: 10_000 });
-    await expect(app.page.getByRole("button", { name: "Create a course" })).toBeVisible();
+    await expect(app.page.getByRole("button", { name: "Create a course" }).first()).toBeVisible();
   } finally {
     await app.close();
     cleanup(app.userData);

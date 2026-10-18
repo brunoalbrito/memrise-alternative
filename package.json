@@ -19,7 +19,8 @@
     "test:e2e": "pnpm build && playwright test",
     "package": "pnpm build && electron-builder",
     "package:dir": "pnpm build && electron-builder --dir",
-    "test:packaged": "PACKAGED_APP=\"$PWD/release/mac-arm64/MemBetter.app/Contents/MacOS/MemBetter\" playwright test packaged"
+    "test:packaged": "PACKAGED_APP=\"$PWD/release/mac-arm64/MemBetter.app/Contents/MacOS/MemBetter\" playwright test packaged",
+    "samples": "node scripts/make-sample-library.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

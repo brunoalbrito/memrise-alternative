@@ -20,6 +20,7 @@ React + Vite + TypeScript renderer inside an Electron shell. Data lives in a loc
 | `pnpm build` | Type-check and build the app into `out/` |
 | `pnpm package:dir` | Build an unpacked app for this computer in `release/` |
 | `pnpm package` | Build installers for this computer in `release/` |
+| `pnpm samples [file]` | Write `dev-data/sample-courses.membetter` with sample courses for development; load it with **Import** on Home |
 | `pnpm test` | Unit and integration tests (Vitest) |
 | `pnpm test:e2e` | Build, then end-to-end tests that drive the real app (Playwright) |
 | `pnpm test:packaged` | Smoke test of the unpacked macOS arm64 app from `pnpm package:dir` |
@@ -38,6 +39,7 @@ src/
 ├── app/         shell and router
 ├── features/    one folder per feature (home, course-editor, course-detail, practice, library, ai-assistant, privacy, ...)
 └── shared/      cross-feature code (api client, media, ui)
+scripts/         development helpers (sample courses file); not part of the app
 tests/           unit/ (Vitest) and e2e/ (Playwright for Electron)
 specs/           feature specifications and plans (Spec Kit); shared design in docs/local-first/
 ```

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { Button } from "../../../shared/ui/Button";
 import { IconButton } from "../../../shared/ui/IconButton";
 import { AppsIcon, FlagIcon, TimerIcon } from "../../../shared/ui/icons";
-import { getCategoryById } from "../data/sampleCourses";
+import { getCategoryById } from "../data/categories";
 import { percentLearned, primaryAction } from "../model/selectors";
 import type { Course, GoalValue } from "../model/types";
 import { CourseOptionsMenu } from "./CourseOptionsMenu";

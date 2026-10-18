@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { sampleLevels } from "../data/sampleLevels";
 import { countsFromLevels } from "../model/counts";
 import { overlayLearned, progressCounts, type ProgressCards } from "../model/progress";
 import type { Course, CourseEdit, CourseLevel } from "../model/types";
@@ -22,10 +21,10 @@ export function mergeCourses(
   courseLevels: Record<string, CourseLevel[]>,
   progress: ProgressInput | null = null,
 ): Course[] {
-  // The library starts empty: only the learner's own courses are listed (sample courses can be installed from Home).
+  // The library starts empty: only the learner's own courses are listed.
   void courseEdits;
   return createdCourses.map((course) => {
-    const levels = courseLevels[course.id] ?? sampleLevels[course.id] ?? [];
+    const levels = courseLevels[course.id] ?? [];
     if (!progress) return { ...course, ...countsFromLevels(levels, course.itemsDue) };
     const withProgress = overlayLearned(levels, progress.cards);
     const { due } = progressCounts(withProgress, progress.cards, progress.asOf);

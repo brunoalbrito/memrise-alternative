@@ -6,6 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -16,5 +17,5 @@
     "skipLibCheck": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["electron", "tests", "electron.vite.config.ts", "vitest.config.ts"]
+  "include": ["electron", "tests", "scripts", "electron.vite.config.ts", "vitest.config.ts"]
 }

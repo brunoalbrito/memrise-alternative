@@ -2,8 +2,6 @@ import { create } from "zustand";
 import { getApi, isDesktop } from "../../../shared/api";
 import type { LibraryChange } from "../../../../electron/shared/schemas";
 import { deleteMedia } from "../../../shared/media/mediaStore";
-import { sampleCourses } from "../data/sampleCourses";
-import { sampleLevels } from "../data/sampleLevels";
 import { parseTags } from "../model/tags";
 import {
   type Course,
@@ -37,14 +35,10 @@ interface LearnerState {
   setGoal: (courseId: string, value: GoalValue | null) => void;
   removeCourse: (courseId: string) => void;
   restoreCourses: () => void;
-  /** Copies the built-in sample courses into the library as the learner's own courses (once each). */
-  installSamples: () => void;
   addCourse: (draft: CourseDraft) => string;
   updateCourse: (courseId: string, draft: CourseDraft) => void;
   setCourseLevels: (courseId: string, levels: CourseLevel[]) => void;
 }
-
-const sampleIds = new Set(sampleCourses.map((course) => course.id));
 
 function buildEdit(base: Course, draft: CourseDraft): CourseEdit {
   const tags = parseTags(draft.tagsInput);
@@ -68,7 +62,7 @@ function levelsOf(
   courseLevels: Record<string, CourseLevel[]>,
   courseId: string,
 ): CourseLevel[] {
-  return courseLevels[courseId] ?? sampleLevels[courseId] ?? [];
+  return courseLevels[courseId] ?? [];
 }
 
 function referencedMediaIds(
@@ -87,7 +81,7 @@ function referencedMediaIds(
 }
 
 function allCourseIds(createdCourses: Course[]): string[] {
-  return [...sampleIds, ...createdCourses.map((course) => course.id)];
+  return createdCourses.map((course) => course.id);
 }
 
 /** Deletes stored files that were referenced before a change and are not referenced after it. */
@@ -231,31 +225,6 @@ export const useLearnerStore = create<LearnerState>()((set, get) => ({
     set({ removedCourseIds: [] });
     send({ type: "restoreHidden" });
   },
-  installSamples: () => {
-    const state = get();
-    const taken = new Set(state.createdCourses.map((course) => course.id));
-    const courses: Course[] = [];
-    const levelsByCourse: Record<string, CourseLevel[]> = {};
-    for (const sample of sampleCourses) {
-      const id = `custom-sample-${sample.id}`;
-      if (taken.has(id)) continue;
-      courses.push({ ...sample, id, teaching: true, itemsLearned: 0, itemsDue: 0, learnedToday: 0 });
-      levelsByCourse[id] = (sampleLevels[sample.id] ?? []).map((level) => ({
-        ...level,
-        id: crypto.randomUUID(),
-        words: level.words.map((word) => ({ ...word, id: crypto.randomUUID(), learned: false })),
-      }));
-    }
-    if (courses.length === 0) return;
-    set({
-      createdCourses: [...state.createdCourses, ...courses],
-      courseLevels: { ...state.courseLevels, ...levelsByCourse },
-    });
-    for (const course of courses) {
-      send({ type: "upsertCourse", course });
-      send({ type: "saveLevels", courseId: course.id, levels: levelsByCourse[course.id]! });
-    }
-  },
   addCourse: (draft) => {
     const id = `custom-${crypto.randomUUID()}`;
     const tags = parseTags(draft.tagsInput);
@@ -295,21 +264,9 @@ export const useLearnerStore = create<LearnerState>()((set, get) => ({
   updateCourse: (courseId, draft) => {
     const state = get();
     const created = state.createdCourses.find((c) => c.id === courseId);
-    const sample = sampleCourses.find((c) => c.id === courseId);
-    if (!created && (!sample || state.removedCourseIds.includes(courseId))) {
-      throw new CourseNotFoundError();
-    }
-    if (created) {
-      const updated: Course = { ...created, ...buildEdit(created, draft) };
-      set({
-        createdCourses: state.createdCourses.map((c) => (c.id === courseId ? updated : c)),
-      });
-      send({ type: "upsertCourse", course: updated });
-      return;
-    }
-    const base: Course = { ...sample!, ...state.courseEdits[courseId] };
-    const edit = buildEdit(base, draft);
-    set({ courseEdits: { ...state.courseEdits, [courseId]: edit } });
-    send({ type: "setEdit", courseId, edit });
+    if (!created) throw new CourseNotFoundError();
+    const updated: Course = { ...created, ...buildEdit(created, draft) };
+    set({ createdCourses: state.createdCourses.map((c) => (c.id === courseId ? updated : c)) });
+    send({ type: "upsertCourse", course: updated });
   },
 }));

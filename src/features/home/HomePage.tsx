@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { CreateCourseButton } from "./components/CreateCourseButton";
 import { EmptyState } from "./components/EmptyState";
 import { CourseCard } from "./components/CourseCard";
@@ -7,13 +7,12 @@ import { HomeErrorBoundary } from "./components/HomeErrorBoundary";
 import { TopAppBar } from "./components/TopAppBar";
 import { useHomeExtensions } from "./context/HomeExtensions";
 import { useFilteredCourses } from "./hooks/useFilteredCourses";
-import { useLearnerStore } from "./store/learnerStore";
 
 export function HomePage() {
   const { hasCourses, courses, categories, filter, filterName, setFilter, goals } =
     useFilteredCourses();
   const { toolbar } = useHomeExtensions();
-  const installSamples = useLearnerStore((state) => state.installSamples);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-surface">
@@ -36,9 +35,9 @@ export function HomePage() {
         <HomeErrorBoundary>
           {!hasCourses ? (
             <EmptyState
-              message="You have no courses yet. Create one, import a file, or try the samples."
-              actionLabel="Install sample courses"
-              onAction={installSamples}
+              message="You have no courses yet. Create one, or import a course file or a word list."
+              actionLabel="Create a course"
+              onAction={() => navigate("/courses/new")}
             />
           ) : courses.length === 0 ? (
             <EmptyState

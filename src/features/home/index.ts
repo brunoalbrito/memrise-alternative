@@ -1,6 +1,4 @@
 export { HomePage } from "./HomePage";
-export { sampleCourses } from "./data/sampleCourses";
-export { sampleLevels } from "./data/sampleLevels";
 export { TopAppBar } from "./components/TopAppBar";
 export { getVisibleCourses, useCourse } from "./hooks/useAllCourses";
 export { getCourseLevels, useCourseLevels } from "./hooks/useCourseLevels";
@@ -13,7 +11,7 @@ export type { CourseDraft, Language } from "./model/types";
 export { CourseOptionsMenu } from "./components/CourseOptionsMenu";
 export { ProgressBar } from "./components/ProgressBar";
 export { percentLearned } from "./model/selectors";
-export { getCategoryById } from "./data/sampleCourses";
+export { getCategoryById } from "./data/categories";
 export type {
   Course,
   CourseEdit,

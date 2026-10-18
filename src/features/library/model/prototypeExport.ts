@@ -1,6 +1,5 @@
 import { strToU8, zipSync } from "fflate";
 import { getMedia } from "../../../shared/media/mediaStore";
-import { sampleCourses, sampleLevels } from "../../home";
 import type { Course, CourseEdit, CourseLevel, MediaRef } from "../../home";
 
 /** What the browser prototype kept in `localStorage` under `membetter.learner` (zustand persist format). */
@@ -32,7 +31,7 @@ const EXTENSIONS: Record<string, string> = {
 
 /**
  * Builds a library `.membetter` file from the prototype's data: every course the learner created, and every
- * sample course they edited. Progress, goals and removed courses are not included.
+ * sample course they edited or changed the levels of. Progress, goals and removed courses are not included.
  */
 export async function buildLegacyLibrary(
   state: LegacyState,
@@ -41,12 +40,30 @@ export async function buildLegacyLibrary(
 ): Promise<Uint8Array | null> {
   const edits = state.courseEdits ?? {};
   const levelsOf = state.courseLevels ?? {};
-  const courses: Course[] = [
-    ...sampleCourses
-      .filter((c) => edits[c.id] !== undefined || levelsOf[c.id] !== undefined)
-      .map((c) => ({ ...c, ...edits[c.id] })),
-    ...(state.createdCourses ?? []),
-  ];
+  // The prototype's built-in sample courses are not part of this app any more. When the learner edited one, it becomes
+  // an ordinary course in the file (its title comes from the edit, or from its name).
+  const created = new Set((state.createdCourses ?? []).map((c) => c.id));
+  const editedIds = [...new Set([...Object.keys(edits), ...Object.keys(levelsOf)])].filter((id) => !created.has(id));
+  const fromSample = (id: string): Course => {
+    const edit = edits[id];
+    const teaching = edit?.teachingLanguageId ?? "en-gb";
+    return {
+      id,
+      title: edit?.title ?? id.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase()),
+      categoryId: `lang-${teaching}`,
+      teaching: true,
+      totalItems: 0,
+      itemsLearned: 0,
+      itemsDue: 0,
+      learnedToday: 0,
+      teachingLanguageId: teaching,
+      speakersLanguageId: edit?.speakersLanguageId ?? "en-gb",
+      ...(edit?.tags ? { tags: edit.tags } : {}),
+      ...(edit?.description ? { description: edit.description } : {}),
+      ...(edit?.shortDescription ? { shortDescription: edit.shortDescription } : {}),
+    };
+  };
+  const courses: Course[] = [...editedIds.map(fromSample), ...(state.createdCourses ?? [])];
   if (courses.length === 0) return null;
 
   const files: Record<string, Uint8Array> = {};
@@ -72,7 +89,7 @@ export async function buildLegacyLibrary(
   };
 
   for (const course of courses) {
-    const levels = levelsOf[course.id] ?? sampleLevels[course.id] ?? [];
+    const levels = levelsOf[course.id] ?? [];
     const outLevels = [];
     for (const level of levels) {
       const words = [];

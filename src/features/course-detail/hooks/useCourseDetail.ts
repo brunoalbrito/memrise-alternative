@@ -7,7 +7,6 @@ import {
   useCourseLevels,
   useLearnerStore,
 } from "../../home";
-import { defaultExtras, sampleCourseExtras } from "../data/sampleCourseExtras";
 import { categoryPath } from "../model/breadcrumb";
 import { levelViews } from "../model/levels";
 
@@ -23,17 +22,15 @@ export function useCourseDetail(id: string) {
   if (!course || removed.includes(course.id)) return null;
 
   const counts = loaded ? progressCounts(storedLevels, cards, asOf) : null;
-  const isOwn = course.id.startsWith("custom-");
-  const extras = isOwn ? defaultExtras : (sampleCourseExtras[course.id] ?? defaultExtras);
 
   return {
     course,
-    creator: extras.creator,
+    creator: "You",
     symbol: getCategoryById(course.categoryId)?.icon ?? "📚",
     path: categoryPath(course),
     percent: percentLearned(course),
-    longTermCount: counts ? counts.longTerm : extras.longTermCount,
-    ignoredCount: counts ? counts.ignored : extras.ignoredCount,
+    longTermCount: counts ? counts.longTerm : 0,
+    ignoredCount: counts ? counts.ignored : 0,
     dueCount: course.itemsDue,
     levels: levelViews(storedLevels),
     goal,
