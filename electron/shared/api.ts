@@ -8,6 +8,23 @@ import type {
   LibrarySnapshot,
 } from "./schemas";
 
+export type AiProvider = "google" | "pollinations";
+
+export interface AiStatus {
+  google: { connected: boolean; last4: string };
+  pollinations: { connected: boolean; last4: string };
+  models: { textModel: string; speechModel: string; pollinationsModel: string };
+  /** The operating system only offers weak protection for saved keys. */
+  weakProtection: boolean;
+}
+
+export interface WordText {
+  definition: string;
+  sentences: string[];
+  best: number;
+  ipa: string;
+}
+
 /** Result envelope returned by every `window.api` call. */
 export type ApiError = { code: string; message: string };
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -44,6 +61,21 @@ export interface MembetterApi {
     onOpenFile(callback: (path: string) => void): () => void;
     /** Progress of a running export. */
     onProgress(callback: (done: number, total: number) => void): () => void;
+  };
+  ai: {
+    /** Which keys are saved (never the keys themselves) and the model names. */
+    status(): Promise<Result<AiStatus>>;
+    /** Keys are write-only: they are stored encrypted and never returned. */
+    saveKey(provider: AiProvider, key: string): Promise<Result<null>>;
+    removeKey(provider: AiProvider): Promise<Result<null>>;
+    testGoogle(): Promise<Result<null>>;
+    setModels(models: AiStatus["models"]): Promise<Result<null>>;
+    restoreModels(): Promise<Result<AiStatus["models"]>>;
+    wordText(word: string, languageName: string): Promise<Result<WordText>>;
+    /** WAV bytes. */
+    wordAudio(word: string): Promise<Result<Uint8Array>>;
+    /** JPEG bytes. */
+    wordImage(word: string, sentence: string): Promise<Result<Uint8Array>>;
   };
   library: {
     /** Everything the learner has stored. */

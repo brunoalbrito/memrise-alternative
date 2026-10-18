@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AiError, type AiErrorKind } from "../api/errors";
-import { describeScene, generateWordAudio, generateWordText } from "../api/gemini";
-import { buildFallbackScene, buildImagePrompt, generateWordImage } from "../api/pollinations";
+import { generateWordAudio, generateWordImage, generateWordText } from "../api/client";
 import type { WordSuggestion } from "../model/suggestion";
 import { useAiStore } from "../store/aiStore";
 
@@ -46,8 +45,7 @@ export function useSuggestions(word: string, languageName: string) {
     imageControllerRef.current = controller;
     const runId = imageRunRef.current;
     const timer = window.setTimeout(() => controller.abort("timeout"), IMAGE_TIMEOUT_MS);
-    const { pollinationsKey, pollinationsModel } = useAiStore.getState();
-    if (pollinationsKey === "") {
+    if (!useAiStore.getState().pollinationsConnected) {
       window.clearTimeout(timer);
       setImage({ status: "error", kind: "image-no-key" });
       return;
@@ -55,26 +53,7 @@ export function useSuggestions(word: string, languageName: string) {
     imageIndexRef.current = index;
     setImage({ status: "loading", index });
     try {
-      const { apiKey, textModel, speechModel } = useAiStore.getState();
-      let scene: string;
-      try {
-        scene = await describeScene(
-          word.trim(),
-          sentence,
-          { apiKey, textModel, speechModel },
-          controller.signal,
-        );
-      } catch (error) {
-        // A cancellation must stop everything; any other problem uses the fallback scene.
-        if (controller.signal.aborted) throw error;
-        scene = buildFallbackScene(sentence);
-      }
-      const blob = await generateWordImage(
-        buildImagePrompt(scene),
-        pollinationsKey,
-        pollinationsModel,
-        controller.signal,
-      );
+      const blob = await generateWordImage(word.trim(), sentence, controller.signal);
       if (runId !== imageRunRef.current) return;
       setImage({ status: "ready", index, blob });
     } catch (error) {
@@ -97,17 +76,15 @@ export function useSuggestions(word: string, languageName: string) {
     controllerRef.current = controller;
     const runId = (runIdRef.current += 1);
     const timer = window.setTimeout(() => controller.abort("timeout"), TIMEOUT_MS);
-    const { apiKey, textModel, speechModel } = useAiStore.getState();
-    const settings = { apiKey, textModel, speechModel };
     const trimmed = word.trim();
 
-    const audioPromise = generateWordAudio(trimmed, settings, controller.signal).then(
+    const audioPromise = generateWordAudio(trimmed, controller.signal).then(
       (blob) => ({ blob }),
       (error: unknown) => ({ error }),
     );
 
     try {
-      const text = await generateWordText(trimmed, languageName, settings, controller.signal);
+      const text = await generateWordText(trimmed, languageName, controller.signal);
       const audio = await audioPromise;
       if (runId !== runIdRef.current || controller.signal.aborted && controller.signal.reason !== "timeout") {
         return;

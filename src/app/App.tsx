@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { RouterProvider } from "react-router/dom";
+import { useAiStore } from "../features/ai-assistant";
 import { HomeExtensionsProvider, useLearnerStore } from "../features/home";
 import { LibraryHost, LibraryToolbar, useExchangeStore } from "../features/library";
 import { isDesktop } from "../shared/api";
@@ -9,10 +10,12 @@ export function App() {
   const ready = useLearnerStore((state) => state.ready);
   const loadError = useLearnerStore((state) => state.loadError);
   const hydrate = useLearnerStore((state) => state.hydrate);
+  const hydrateAi = useAiStore((state) => state.hydrate);
 
   useEffect(() => {
     void hydrate();
-  }, [hydrate]);
+    void hydrateAi();
+  }, [hydrate, hydrateAi]);
 
   if (loadError) {
     return (

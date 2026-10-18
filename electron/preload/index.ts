@@ -28,6 +28,17 @@ const api: MembetterApi = {
       return () => ipcRenderer.removeListener("exchange:progress", listener);
     },
   },
+  ai: {
+    status: () => ipcRenderer.invoke("ai:status"),
+    saveKey: (provider, key) => ipcRenderer.invoke("ai:saveKey", { provider, key }),
+    removeKey: (provider) => ipcRenderer.invoke("ai:removeKey", { provider }),
+    testGoogle: () => ipcRenderer.invoke("ai:testGoogle"),
+    setModels: (models) => ipcRenderer.invoke("ai:setModels", models),
+    restoreModels: () => ipcRenderer.invoke("ai:restoreModels"),
+    wordText: (word, languageName) => ipcRenderer.invoke("ai:wordText", { word, languageName }),
+    wordAudio: (word) => ipcRenderer.invoke("ai:wordAudio", { word }),
+    wordImage: (word, sentence) => ipcRenderer.invoke("ai:wordImage", { word, sentence }),
+  },
   library: {
     load: () => ipcRenderer.invoke("library:load"),
     apply: (change) => ipcRenderer.invoke("library:apply", change),

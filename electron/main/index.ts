@@ -8,6 +8,10 @@ import { z } from "zod";
 import { MediaError, MediaStore } from "../services/media";
 import { handleMediaProtocol, registerMediaScheme } from "./protocol";
 import { ExchangeError, importArchive, previewOf, readArchive, writeArchive, type ParsedArchive } from "../services/exchange";
+import { AiService } from "../services/ai/service";
+import { Secrets } from "../services/secrets";
+import { Settings } from "../services/settings";
+import { osCipher, shrinkImage } from "./secureStorage";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
@@ -15,6 +19,8 @@ import { createMainWindow } from "./window";
 
 let library: OpenedLibrary | null = null;
 let media: MediaStore | null = null;
+let secrets: Secrets | null = null;
+let ai: AiService | null = null;
 
 registerMediaScheme();
 
@@ -37,6 +43,15 @@ function openFileInRenderer(path: string): void {
   if (win && rendererReady) win.webContents.send("exchange:open-file", path);
   else pendingOpenFile = path;
 }
+
+const ProviderSchema = z.enum(["google", "pollinations"]);
+const KeySchema = z.object({ provider: ProviderSchema, key: z.string().trim().min(1).max(500).regex(/^\S+$/, "Enter your API key without spaces.") });
+const ProviderOnlySchema = z.object({ provider: ProviderSchema });
+const modelName = z.string().trim().max(200).regex(/^\S*$/, "Enter model names without spaces.");
+const ModelsSchema = z.object({ textModel: modelName.min(1), speechModel: modelName.min(1), pollinationsModel: modelName });
+const WordTextSchema = z.object({ word: z.string().trim().min(1).max(200), languageName: z.string().trim().min(1).max(100) });
+const WordOnlySchema = z.object({ word: z.string().trim().min(1).max(200) });
+const WordImageSchema = z.object({ word: z.string().trim().min(1).max(200), sentence: z.string().trim().min(1).max(1000) });
 
 const MediaRemoveSchema = z.object({ id: z.string() });
 
@@ -101,6 +116,32 @@ function registerIpc(): void {
       pendingOpenFile = null;
     }
   });
+  handle("ai:status", null, () => ({
+    google: secrets!.status("google"),
+    pollinations: secrets!.status("pollinations"),
+    models: ai!.models(),
+    weakProtection: secrets!.weakProtection(),
+  }));
+  handle("ai:saveKey", KeySchema, ({ provider, key }) => {
+    secrets!.save(provider, key);
+    return null;
+  });
+  handle("ai:removeKey", ProviderOnlySchema, ({ provider }) => {
+    secrets!.remove(provider);
+    return null;
+  });
+  handle("ai:testGoogle", null, async () => {
+    await ai!.testGoogle();
+    return null;
+  });
+  handle("ai:setModels", ModelsSchema, (models) => {
+    ai!.setModels(models);
+    return null;
+  });
+  handle("ai:restoreModels", null, () => ai!.restoreModels());
+  handle("ai:wordText", WordTextSchema, ({ word, languageName }) => ai!.wordText(word, languageName));
+  handle("ai:wordAudio", WordOnlySchema, ({ word }) => ai!.wordAudio(word));
+  handle("ai:wordImage", WordImageSchema, ({ word, sentence }) => ai!.wordImage(word, sentence));
   handle("library:load", null, () => loadLibrary(library!.db));
   handle("library:apply", LibraryChangeSchema, (change) => {
     applyChange(library!.db, change);
@@ -123,6 +164,9 @@ function start(): void {
   purgeTrash(library.db);
   media = new MediaStore(library.db, join(app.getPath("userData"), "library", "media"));
   media.collectGarbage();
+  const settings = new Settings(library.db);
+  secrets = new Secrets(settings, osCipher);
+  ai = new AiService(secrets, settings, shrinkImage);
   handleMediaProtocol(media);
   registerIpc();
   createMainWindow();
