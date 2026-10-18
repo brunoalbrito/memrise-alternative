@@ -1,5 +1,5 @@
 import { Button } from "../../../shared/ui/Button";
-import { languages } from "../../home";
+import { languages, type CourseDraft } from "../../home";
 import { useCourseForm } from "../hooks/useCourseForm";
 import { SelectField } from "./SelectField";
 import { TextAreaField } from "./TextAreaField";
@@ -10,9 +10,21 @@ const languageOptions = languages.map((language) => ({
   label: language.name,
 }));
 
-export function CourseForm() {
+interface CourseFormProps {
+  initialValues: CourseDraft;
+  onSubmit: (values: CourseDraft) => void;
+  successPath: string;
+  submitLabel: string;
+}
+
+export function CourseForm({
+  initialValues,
+  onSubmit,
+  successPath,
+  submitLabel,
+}: CourseFormProps) {
   const { values, errors, storageError, setValue, registerRef, submit } =
-    useCourseForm();
+    useCourseForm({ initialValues, onSubmit, successPath });
 
   return (
     <form
@@ -80,7 +92,7 @@ export function CourseForm() {
             {storageError}
           </p>
         )}
-        <Button type="submit">Create Course</Button>
+        <Button type="submit">{submitLabel}</Button>
       </div>
     </form>
   );

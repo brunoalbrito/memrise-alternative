@@ -2,6 +2,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 import { HomePage } from "../features/home";
 import { CourseDetailPage, LevelPlaceholder } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
+import { EditCoursePage } from "../features/edit-course";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
 
 export const router = createBrowserRouter([
@@ -28,10 +29,7 @@ export const router = createBrowserRouter([
     element: <CoursePlaceholder title="Learn new words" />,
   },
   { path: "/course/:id/share", element: <CoursePlaceholder title="Tweet" /> },
-  {
-    path: "/course/:id/edit",
-    element: <CoursePlaceholder title="Edit Course" />,
-  },
+  { path: "/course/:id/edit", element: <EditCoursePage /> },
   {
     path: "/course/:id/leaderboard",
     element: <CoursePlaceholder title="Leaderboard" />,

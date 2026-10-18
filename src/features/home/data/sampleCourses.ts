@@ -18,6 +18,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 26,
     learnedToday: 0,
     teaching: false,
+    teachingLanguageId: "en-gb",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "irregular-verbs",
@@ -28,6 +30,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 0,
     learnedToday: 0,
     teaching: false,
+    teachingLanguageId: "en-gb",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "english-polyglot",
@@ -38,6 +42,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 0,
     learnedToday: 0,
     teaching: false,
+    teachingLanguageId: "en-gb",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "japanese-hiragana",
@@ -48,6 +54,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 0,
     learnedToday: 12,
     teaching: true,
+    teachingLanguageId: "ja",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "japanese-n5-vocab",
@@ -58,6 +66,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 41,
     learnedToday: 8,
     teaching: false,
+    teachingLanguageId: "ja",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "spanish-mexico-basics",
@@ -68,6 +78,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 9,
     learnedToday: 5,
     teaching: true,
+    teachingLanguageId: "es-mx",
+    speakersLanguageId: "en-gb",
   },
   {
     id: "networking-fundamentals",
@@ -79,6 +91,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 3,
     learnedToday: 0,
     teaching: false,
+    teachingLanguageId: "en-us",
+    speakersLanguageId: "en-us",
   },
   {
     id: "empty-course",
@@ -89,6 +103,8 @@ export const sampleCourses: Course[] = [
     itemsDue: 0,
     learnedToday: 0,
     teaching: true,
+    teachingLanguageId: "en-gb",
+    speakersLanguageId: "en-gb",
   },
 ];
 

@@ -30,6 +30,22 @@ export interface Course {
   shortDescription?: string;
 }
 
+/** Learner's saved changes to a pre-loaded sample course. Applied over the sample data. */
+export interface CourseEdit {
+  /** Trimmed, 3 to 100 characters */
+  title?: string;
+  teachingLanguageId?: string;
+  speakersLanguageId?: string;
+  /** At most 10 entries, each at most 30 characters, trimmed, no empty entries, no case-insensitive duplicates */
+  tags?: string[];
+  /** At most 2000 characters */
+  description?: string;
+  /** At most 100 characters */
+  shortDescription?: string;
+  /** Set to `lang-<teachingLanguageId>` only when the teaching language changed; otherwise the course's current category */
+  categoryId?: string;
+}
+
 export interface Language {
   id: string;
   name: string;

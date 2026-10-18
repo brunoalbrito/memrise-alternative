@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import {
-  DEFAULT_SPEAKERS_LANGUAGE_ID,
-  useLearnerStore,
-  type CourseDraft,
-} from "../../home";
+import { CourseNotFoundError, type CourseDraft } from "../../home";
 import {
   FIELD_ORDER,
   validateCourseForm,
@@ -13,15 +9,6 @@ import {
 } from "../model/validation";
 
 const STORAGE_ERROR = "Could not save your course on this device. Please try again.";
-
-const initialValues: CourseDraft = {
-  name: "",
-  teachingLanguageId: "",
-  speakersLanguageId: DEFAULT_SPEAKERS_LANGUAGE_ID,
-  tagsInput: "",
-  description: "",
-  shortDescription: "",
-};
 
 function storageWritable(): boolean {
   try {
@@ -33,7 +20,17 @@ function storageWritable(): boolean {
   }
 }
 
-export function useCourseForm() {
+interface UseCourseFormOptions {
+  initialValues: CourseDraft;
+  onSubmit: (values: CourseDraft) => void;
+  successPath: string;
+}
+
+export function useCourseForm({
+  initialValues,
+  onSubmit,
+  successPath,
+}: UseCourseFormOptions) {
   const navigate = useNavigate();
   const [values, setValues] = useState<CourseDraft>(initialValues);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -82,14 +79,19 @@ export function useCourseForm() {
 
     submitted.current = true;
     try {
-      useLearnerStore.getState().addCourse(values);
-    } catch {
+      onSubmit(values);
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        // The destination page shows "Course not found".
+        navigate(successPath);
+        return;
+      }
       submitted.current = false;
       setStorageError(STORAGE_ERROR);
       return;
     }
     setStorageError(null);
-    navigate("/");
+    navigate(successPath);
   };
 
   return { values, errors, storageError, setValue, registerRef, submit };

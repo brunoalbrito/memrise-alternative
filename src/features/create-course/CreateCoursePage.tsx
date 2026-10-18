@@ -1,7 +1,21 @@
 import { Link } from "react-router";
-import { TopAppBar } from "../home";
+import {
+  DEFAULT_SPEAKERS_LANGUAGE_ID,
+  TopAppBar,
+  useLearnerStore,
+  type CourseDraft,
+} from "../home";
 import { CourseForm } from "./components/CourseForm";
 import { HelpPanel } from "./components/HelpPanel";
+
+const emptyDraft: CourseDraft = {
+  name: "",
+  teachingLanguageId: "",
+  speakersLanguageId: DEFAULT_SPEAKERS_LANGUAGE_ID,
+  tagsInput: "",
+  description: "",
+  shortDescription: "",
+};
 
 export function CreateCoursePage() {
   return (
@@ -20,7 +34,14 @@ export function CreateCoursePage() {
           </Link>
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <CourseForm />
+          <CourseForm
+            initialValues={emptyDraft}
+            onSubmit={(values) => {
+              useLearnerStore.getState().addCourse(values);
+            }}
+            successPath="/"
+            submitLabel="Create Course"
+          />
           <HelpPanel />
         </div>
       </main>
