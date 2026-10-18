@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconButton } from "../../../shared/ui/IconButton";
-import { MoreVertIcon } from "../../../shared/ui/icons";
+import { ArrowDropDownIcon, MoreVertIcon } from "../../../shared/ui/icons";
 import { Menu, type MenuItem } from "../../../shared/ui/Menu";
 import type { Course, GoalValue } from "../model/types";
 import { useLearnerStore } from "../store/learnerStore";
@@ -10,9 +10,17 @@ import { RemoveCourseDialog } from "./RemoveCourseDialog";
 interface CourseOptionsMenuProps {
   course: Course;
   goal?: GoalValue;
+  /** When set, the trigger is a text button with this label instead of the three-dot icon. */
+  triggerLabel?: string;
+  onRemoved?: () => void;
 }
 
-export function CourseOptionsMenu({ course, goal }: CourseOptionsMenuProps) {
+export function CourseOptionsMenu({
+  course,
+  goal,
+  triggerLabel,
+  onRemoved,
+}: CourseOptionsMenuProps) {
   const [dialog, setDialog] = useState<"goal" | "remove" | null>(null);
   const setGoal = useLearnerStore((state) => state.setGoal);
 
@@ -37,11 +45,22 @@ export function CourseOptionsMenu({ course, goal }: CourseOptionsMenuProps) {
         align="right"
         items={items}
         onSelect={onSelect}
-        trigger={(props) => (
-          <IconButton aria-label="Course options" {...props}>
-            <MoreVertIcon />
-          </IconButton>
-        )}
+        trigger={(props) =>
+          triggerLabel ? (
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-1 rounded-full px-3 text-label-large font-medium text-on-surface-variant hover:bg-on-surface/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              {...props}
+            >
+              <ArrowDropDownIcon />
+              {triggerLabel}
+            </button>
+          ) : (
+            <IconButton aria-label="Course options" {...props}>
+              <MoreVertIcon />
+            </IconButton>
+          )
+        }
       />
       {dialog === "goal" && (
         <GoalDialog
@@ -55,6 +74,7 @@ export function CourseOptionsMenu({ course, goal }: CourseOptionsMenuProps) {
           courseId={course.id}
           courseTitle={course.title}
           onClose={() => setDialog(null)}
+          onRemoved={onRemoved}
         />
       )}
     </>

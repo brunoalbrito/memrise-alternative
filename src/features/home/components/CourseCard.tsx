@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button } from "../../../shared/ui/Button";
 import { IconButton } from "../../../shared/ui/IconButton";
 import { AppsIcon, FlagIcon, TimerIcon } from "../../../shared/ui/icons";
@@ -23,7 +23,7 @@ export function CourseCard({ course, goal }: CourseCardProps) {
   return (
     <article
       aria-label={course.title}
-      className="rounded-m3-lg border border-outline-variant bg-surface-container p-4 sm:p-5"
+      className="relative rounded-m3-lg border border-outline-variant bg-surface-container p-4 sm:p-5"
     >
       <div className="flex items-start gap-4">
         <div
@@ -38,7 +38,12 @@ export function CourseCard({ course, goal }: CourseCardProps) {
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="break-words text-title-large text-on-surface">
-            {course.title}
+            <Link
+              to={`/course/${course.id}`}
+              className="after:absolute after:inset-0 after:rounded-m3-lg after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-primary"
+            >
+              {course.title}
+            </Link>
           </h2>
           <div className="mt-2 flex items-baseline gap-4 text-body-medium text-on-surface">
             <span className="font-medium">{percent}%</span>
@@ -50,16 +55,18 @@ export function CourseCard({ course, goal }: CourseCardProps) {
             </span>
           </div>
         </div>
-        <CourseOptionsMenu course={course} goal={goal} />
+        <div className="relative z-10">
+          <CourseOptionsMenu course={course} goal={goal} />
+        </div>
       </div>
 
       <div className="mt-3">
         <ProgressBar value={percent} label={`${course.title} progress`} />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="pointer-events-none relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3">
         <CourseStats course={course} goal={goal} />
-        <div className="flex items-center gap-2">
+        <div className="pointer-events-auto flex items-center gap-2">
           <Button
             variant="tonal"
             icon={
@@ -72,7 +79,7 @@ export function CourseCard({ course, goal }: CourseCardProps) {
             onClick={() =>
               navigate(
                 action === "speed-review"
-                  ? `/course/${course.id}/review`
+                  ? `/course/${course.id}/speed-review`
                   : `/course/${course.id}/learn`,
               )
             }
@@ -82,7 +89,7 @@ export function CourseCard({ course, goal }: CourseCardProps) {
           <IconButton
             variant="tonal"
             aria-label="Levels and items"
-            onClick={() => navigate(`/course/${course.id}/levels`)}
+            onClick={() => navigate(`/course/${course.id}`)}
           >
             <AppsIcon />
           </IconButton>

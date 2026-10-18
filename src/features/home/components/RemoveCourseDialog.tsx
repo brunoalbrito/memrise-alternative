@@ -6,12 +6,14 @@ interface RemoveCourseDialogProps {
   courseId: string;
   courseTitle: string;
   onClose: () => void;
+  onRemoved?: () => void;
 }
 
 export function RemoveCourseDialog({
   courseId,
   courseTitle,
   onClose,
+  onRemoved,
 }: RemoveCourseDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const removeCourse = useLearnerStore((state) => state.removeCourse);
@@ -42,6 +44,7 @@ export function RemoveCourseDialog({
           variant="text"
           onClick={() => {
             removeCourse(courseId);
+            onRemoved?.();
             dialogRef.current?.close();
           }}
         >

@@ -5,3 +5,8 @@ export { useLearnerStore } from "./store/learnerStore";
 export { languages, DEFAULT_SPEAKERS_LANGUAGE_ID } from "./data/languages";
 export { parseTags } from "./model/tags";
 export type { CourseDraft, Language } from "./model/types";
+export { CourseOptionsMenu } from "./components/CourseOptionsMenu";
+export { ProgressBar } from "./components/ProgressBar";
+export { percentLearned } from "./model/selectors";
+export { getCategoryById } from "./data/sampleCourses";
+export type { Course, GoalValue } from "./model/types";
