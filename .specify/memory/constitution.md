@@ -1,13 +1,13 @@
 <!--
 SYNC IMPACT REPORT (remove before commit)
 =========================================
-Version change: 2.0.0 → 2.1.0
-Modified principles: None renamed
-Added principles:
-  - V. Material Design 3 Component Design
+Version change: 2.1.0 → 3.0.0
+Modified principles:
+  - I. React + Vite Stack: renderer stays React + Vite; electron-vite (Vite) builds main/preload too
+Added sections:
+  - Platform: desktop app (Electron), local-first storage
 Modified sections:
-  - Tech Stack: added design-system line (Material Design 3, implemented via Tailwind)
-  - Governance: Principle V compliance added to review expectations
+  - Tech Stack: added Electron toolchain, SQLite, zod, fflate, ts-fsrs, Vitest, Playwright
 Removed sections: N/A
 Follow-up TODOs: None
 =========================================
@@ -80,6 +80,15 @@ removes per-component design debates.
 - **Design system**: Material Design 3 (tokens implemented via Tailwind theme / CSS variables)
 - **Package manager**: pnpm (preferred for monorepo-friendliness and disk efficiency)
 
+- **Desktop shell**: Electron (latest stable) built with electron-vite; electron-builder and
+  electron-updater for packaging and updates. The renderer MUST NOT access Node, the file system or
+  the network directly; it uses a typed preload API (`contextIsolation` on, `nodeIntegration` off, sandbox on).
+- **Local storage**: SQLite via better-sqlite3 in the main process; media as content-addressed files.
+  Browser storage MUST NOT be the source of truth.
+- **Validation and data libraries**: zod (IPC and file validation), fflate (zip), ts-fsrs (scheduling).
+- **Testing**: Vitest for unit and integration tests; Playwright for Electron end-to-end tests.
+  Data integrity features (migrations, import/export, backup) MUST have automated tests.
+
 No library outside this stack may be introduced without a constitution amendment. Adopting
 an M3 component library (e.g., `@material/web`) counts as a new library and requires one.
 
@@ -105,4 +114,4 @@ All code reviews MUST verify compliance with these principles, including M3 conf
 UI changes (Principle V). Complexity that violates
 Principle IV MUST be explicitly justified in the PR description before approval.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-18
+**Version**: 3.0.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-18

@@ -8,31 +8,47 @@
     "node": ">=22.22"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "dev": "electron-vite dev",
+    "build": "tsc -b && electron-vite build",
+    "preview": "electron-vite preview",
     "lint": "eslint .",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "dev:web": "vite",
+    "build:web": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:e2e": "pnpm build && playwright test",
+    "package": "pnpm build && electron-builder"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router": "8.4.0",
+    "zod": "^4.6.7",
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.1",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "^17.13.0",
     "tailwindcss": "4.3.3",
     "typescript": "~6.0.3",
     "typescript-eslint": "8.71.2",
-    "vite": "8.3.4"
-  }
+    "vite": "8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "main": "out/main/index.js",
+  "description": "MemBetter: local-first vocabulary learning"
 }
