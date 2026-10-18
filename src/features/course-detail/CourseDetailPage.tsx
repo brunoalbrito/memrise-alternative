@@ -62,7 +62,7 @@ export function CourseDetailPage() {
             <LevelsSection
               courseId={course.id}
               levels={detail.levels}
-              editHref={detail.isOwn ? `/course/${course.id}/edit` : undefined}
+              editHref={`/course/${course.id}/edit`}
             />
           </div>
           <LeaderboardPanel courseId={course.id} />

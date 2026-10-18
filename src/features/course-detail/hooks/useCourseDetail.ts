@@ -21,7 +21,6 @@ export function useCourseDetail(id: string) {
   return {
     course,
     creator: extras.creator,
-    isOwn,
     symbol: getCategoryById(course.categoryId)?.icon ?? "📚",
     path: categoryPath(course),
     percent: percentLearned(course),

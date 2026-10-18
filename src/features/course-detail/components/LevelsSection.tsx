@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router";
 import { EditIcon } from "../../../shared/ui/icons";
 import type { Level } from "../model/levels";
@@ -7,10 +8,12 @@ import { Tabs } from "./Tabs";
 interface LevelsSectionProps {
   courseId: string;
   levels: Level[];
-  editHref?: string;
+  editHref: string;
 }
 
 export function LevelsSection({ courseId, levels, editHref }: LevelsSectionProps) {
+  const pressed = useRef(false);
+
   return (
     <Tabs
       label="Course sections"
@@ -18,15 +21,20 @@ export function LevelsSection({ courseId, levels, editHref }: LevelsSectionProps
       selectedId="levels"
       onSelect={() => {}}
       action={
-        editHref ? (
-          <Link
-            to={editHref}
-            className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-label-large font-medium text-on-surface-variant hover:bg-on-surface/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <EditIcon className="size-5" />
-            Edit Course
-          </Link>
-        ) : undefined
+        <Link
+          to={editHref}
+          onClick={(event) => {
+            if (pressed.current) {
+              event.preventDefault();
+              return;
+            }
+            pressed.current = true;
+          }}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-label-large font-medium text-on-surface-variant hover:bg-on-surface/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:min-h-10"
+        >
+          <EditIcon className="size-5" />
+          Edit Course
+        </Link>
       }
     >
       {levels.length === 0 ? (
