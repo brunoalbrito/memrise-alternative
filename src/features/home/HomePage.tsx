@@ -1,11 +1,54 @@
-import { useAppStore } from "../../shared/store/appStore";
+import { EmptyState } from "./components/EmptyState";
+import { CourseCard } from "./components/CourseCard";
+import { FilterMenu } from "./components/FilterMenu";
+import { HomeErrorBoundary } from "./components/HomeErrorBoundary";
+import { TopAppBar } from "./components/TopAppBar";
+import { useFilteredCourses } from "./hooks/useFilteredCourses";
+import { useLearnerStore } from "./store/learnerStore";
 
 export function HomePage() {
-  const appName = useAppStore((state) => state.appName);
+  const { hasCourses, courses, categories, filter, filterName, setFilter, goals } =
+    useFilteredCourses();
+  const restoreCourses = useLearnerStore((state) => state.restoreCourses);
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-3xl font-bold">{appName}</h1>
-    </main>
+    <div className="min-h-screen bg-surface">
+      <TopAppBar />
+      <main className="mx-auto max-w-4xl px-4 pb-12 pt-8">
+        <div className="mb-6 flex items-center gap-3">
+          <h1 className="text-headline-medium text-on-surface">{filterName}</h1>
+          {hasCourses && (
+            <FilterMenu
+              filter={filter}
+              categories={categories}
+              onChange={setFilter}
+            />
+          )}
+        </div>
+        <HomeErrorBoundary>
+          {!hasCourses ? (
+            <EmptyState
+              message="You have no courses"
+              actionLabel="Restore sample courses"
+              onAction={restoreCourses}
+            />
+          ) : courses.length === 0 ? (
+            <EmptyState
+              message="No courses match this filter"
+              actionLabel="Clear filter"
+              onAction={() => setFilter("all")}
+            />
+          ) : (
+            <ul className="flex flex-col gap-4">
+              {courses.map((course) => (
+                <li key={course.id}>
+                  <CourseCard course={course} goal={goals[course.id]} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </HomeErrorBoundary>
+      </main>
+    </div>
   );
 }
