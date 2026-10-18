@@ -24,3 +24,4 @@ export { HomeExtensionsProvider, useHomeExtensions } from "./context/HomeExtensi
 export type { HomeExtensions } from "./context/HomeExtensions";
 export { useProgressStore, DEFAULT_NEW_PER_DAY } from "./store/progressStore";
 export { progressCounts } from "./model/progress";
+export type { WordProgress } from "./model/progress";

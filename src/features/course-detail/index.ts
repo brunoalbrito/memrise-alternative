@@ -1,3 +1,3 @@
 export { CourseDetailPage } from "./CourseDetailPage";
-export { LevelPlaceholder } from "./LevelPlaceholder";
+export { LevelDetailPage } from "./LevelDetailPage";
 export { useCourseDetail } from "./hooks/useCourseDetail";

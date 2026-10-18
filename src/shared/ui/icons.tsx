@@ -109,3 +109,11 @@ export const HelpIcon = (p: P) => (
 export const RemoveCircleIcon = (p: P) => (
   <Icon d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" {...p} />
 );
+export const VisibilityIcon = (p: P) => (
+  <Icon d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" {...p} />
+);
+export const ListIcon = (p: P) => (
+  <Icon d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" {...p} />
+);
+export const ChevronRightIcon = (p: P) => <Icon d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" {...p} />;
+export const ChevronLeftIcon = (p: P) => <Icon d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" {...p} />;

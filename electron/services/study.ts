@@ -51,6 +51,12 @@ export const MarkSchema = z.object({
   flag: z.enum(["ignored", "longTerm"]),
   value: z.boolean(),
 });
+export const MarkManySchema = z.object({
+  courseId: z.string().min(1).max(100),
+  wordIds: z.array(z.string().min(1).max(100)).min(1).max(20000),
+  flag: z.enum(["ignored", "longTerm"]),
+  value: z.boolean(),
+});
 export const NewPerDaySchema = z.object({ courseId: z.string().min(1).max(100), value: z.number().int().min(1).max(100) });
 export const CourseIdSchema = z.object({ courseId: z.string().min(1).max(100) });
 
@@ -67,6 +73,8 @@ export interface Plan {
 
 export interface CardProgress {
   learned: boolean;
+  /** Mistakes made after the word was learned. */
+  lapses: number;
   dueAt: string;
   ignored: boolean;
   longTerm: boolean;
@@ -285,31 +293,39 @@ export class Study {
 
   /** Ignore or long-term flag for a word, creating a "new" card row when the word has none yet. */
   mark(input: z.infer<typeof MarkSchema>): void {
+    this.markMany({ courseId: input.courseId, wordIds: [input.wordId], flag: input.flag, value: input.value });
+  }
+
+  /** The same flag for many words in one step (all or nothing). */
+  markMany(input: z.infer<typeof MarkManySchema>): void {
     const now = this.now().toISOString();
     const column = input.flag === "ignored" ? "ignored" : "in_long_term";
+    const create = this.db.prepare(
+      `INSERT INTO cards (word_id, course_id, state, due_at, created_at, updated_at) VALUES (?, ?, 0, ?, ?, ?)
+       ON CONFLICT (word_id) DO NOTHING`,
+    );
+    const update = this.db.prepare(`UPDATE cards SET ${column} = ?, updated_at = ? WHERE word_id = ?`);
     this.db.transaction(() => {
-      this.db
-        .prepare(
-          `INSERT INTO cards (word_id, course_id, state, due_at, created_at, updated_at) VALUES (?, ?, 0, ?, ?, ?)
-           ON CONFLICT (word_id) DO NOTHING`,
-        )
-        .run(input.wordId, input.courseId, now, now, now);
-      this.db.prepare(`UPDATE cards SET ${column} = ?, updated_at = ? WHERE word_id = ?`).run(input.value ? 1 : 0, now, input.wordId);
+      for (const wordId of input.wordIds) {
+        create.run(wordId, input.courseId, now, now, now);
+        update.run(input.value ? 1 : 0, now, wordId);
+      }
     })();
   }
 
   /** What the learner has learned and what is due, for every word with a card. */
   progress(): Progress {
     const cards: Record<string, CardProgress> = {};
-    for (const r of this.db.prepare("SELECT word_id, state, due_at, learned_at, ignored, in_long_term FROM cards").all() as {
+    for (const r of this.db.prepare("SELECT word_id, state, due_at, learned_at, ignored, in_long_term, lapses FROM cards").all() as {
       word_id: string;
       state: number;
       due_at: string;
       learned_at: string | null;
       ignored: number;
       in_long_term: number;
+      lapses: number;
     }[]) {
-      cards[r.word_id] = { learned: r.learned_at !== null, dueAt: r.state === 0 ? "" : r.due_at, ignored: r.ignored === 1, longTerm: r.in_long_term === 1 };
+      cards[r.word_id] = { learned: r.learned_at !== null, lapses: r.lapses, dueAt: r.state === 0 ? "" : r.due_at, ignored: r.ignored === 1, longTerm: r.in_long_term === 1 };
     }
     const practicedToday: Record<string, number> = {};
     for (const r of this.db

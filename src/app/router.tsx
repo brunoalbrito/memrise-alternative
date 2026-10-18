@@ -1,7 +1,7 @@
 import { Navigate, createBrowserRouter, createHashRouter } from "react-router";
 import { isDesktop } from "../shared/api";
 import { HomePage } from "../features/home";
-import { CourseDetailPage, LevelPlaceholder } from "../features/course-detail";
+import { CourseDetailPage, LevelDetailPage } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
 import { CourseEditorPage } from "../features/course-editor";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
@@ -40,6 +40,6 @@ export const router = createRouter([
   { path: "/course/:id/edit/details", element: <CourseEditorPage tab="details" /> },
   { path: "/course/:id/edit/databases", element: <CourseEditorPage tab="databases" /> },
   { path: "/course/:id/edit/contributors", element: <CourseEditorPage tab="contributors" /> },
-  { path: "/course/:id/levels/:level", element: <LevelPlaceholder /> },
+  { path: "/course/:id/levels/:level", element: <LevelDetailPage /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
