@@ -37,6 +37,14 @@ const MediaPutSchema = z.object({
   bytes: z.instanceof(Uint8Array),
   name: z.string().max(300),
 });
+/**
+ * Files and folders the renderer may ask the main process to use must come from a native dialog (or the operating system),
+ * so a compromised renderer cannot make the app read or write arbitrary places.
+ */
+let pickedCsv: string | null = null;
+const pickedFolders = new Set<string>();
+const chooseAgain = () => new ExchangeError("validation_failed", "Choose the file again.");
+
 const InspectSchema = z.object({ path: z.string().min(1).max(4096) });
 
 /** The one file waiting for the user's choice; only main holds it. */
@@ -117,6 +125,7 @@ function registerIpc(): void {
   });
   handle("exchange:inspect", InspectSchema, ({ path }) => {
     staged = null;
+    if (!/\.membetter$/i.test(path)) throw new ExchangeError("validation_failed", "Choose a .membetter file.");
     const parsed = readArchive(path);
     const token = randomUUID();
     staged = { token, parsed };
@@ -190,17 +199,31 @@ function registerIpc(): void {
     const win = BrowserWindow.getFocusedWindow() ?? undefined;
     const options = { title: "Import word list", properties: ["openFile" as const], filters: [{ name: "Word list", extensions: ["csv", "tsv", "txt"] }] };
     const choice = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
-    return choice.canceled ? null : (choice.filePaths[0] ?? null);
+    pickedCsv = choice.canceled ? null : (choice.filePaths[0] ?? null);
+    return pickedCsv;
   });
-  handle("anki:previewCsv", InspectSchema, ({ path }) => previewCsv(path));
-  handle("anki:importCsv", CsvImportSchema, (input) => importCsv(library!.db, input));
+  handle("anki:previewCsv", InspectSchema, ({ path }) => {
+    if (path !== pickedCsv) throw chooseAgain();
+    return previewCsv(path);
+  });
+  handle("anki:importCsv", CsvImportSchema, (input) => {
+    if (input.path !== pickedCsv) throw chooseAgain();
+    return importCsv(library!.db, input);
+  });
   handle("backup:getConfig", null, () => backups!.config());
-  handle("backup:setConfig", BackupConfigPatchSchema, (patch) => backups!.setConfig(patch));
+  handle("backup:setConfig", BackupConfigPatchSchema, (patch) => {
+    if (patch.folder !== undefined && patch.folder !== backups!.config().folder && !pickedFolders.has(patch.folder)) {
+      throw new ExchangeError("validation_failed", "Choose the folder again.");
+    }
+    return backups!.setConfig(patch);
+  });
   handle("backup:chooseFolder", null, async () => {
     const win = BrowserWindow.getFocusedWindow() ?? undefined;
     const options = { title: "Choose a backup folder", properties: ["openDirectory" as const, "createDirectory" as const] };
     const choice = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
-    return choice.canceled ? null : (choice.filePaths[0] ?? null);
+    const folder = choice.canceled ? null : (choice.filePaths[0] ?? null);
+    if (folder) pickedFolders.add(folder);
+    return folder;
   });
   handle("backup:runNow", null, () => backups!.create());
   handle("backup:list", null, () => backups!.list());

@@ -138,6 +138,12 @@ function scheduleLevels(courseId: string): void {
   );
 }
 
+/** Sends edits that are waiting for their delay and resolves when everything has been written. */
+export async function flushPendingSaves(): Promise<void> {
+  for (const courseId of [...levelTimers.keys()]) flushLevels(courseId);
+  await queue;
+}
+
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
     for (const courseId of [...levelTimers.keys()]) flushLevels(courseId);

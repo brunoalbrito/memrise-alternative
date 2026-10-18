@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ExportItem, ImportChoice, ImportPreview } from "../../../../electron/shared/schemas";
 import { getApi } from "../../../shared/api";
-import { useLearnerStore, useProgressStore } from "../../home";
+import { flushPendingSaves, useLearnerStore, useProgressStore } from "../../home";
 import { exportItemFor, exportItemsForAll } from "../model/exportItems";
 import type { Course } from "../../home";
 
@@ -111,6 +111,7 @@ export const useExchangeStore = create<ExchangeState>()((set, get) => {
       if (!preview) return;
       set({ preview: null, busy: choice === "cancel" ? null : "Importing…" });
       try {
+        await flushPendingSaves();
         const result = await getApi().exchange.commit(preview.token, choice, includeProgress);
         if (!result.ok) return fail(result.error.message);
         if (choice === "cancel") return set({ busy: null });

@@ -7,6 +7,8 @@ files:
   - out/**
   - package.json
 asar: true
+# Electron fuses (runAsNode, NODE_OPTIONS, onlyLoadAppFromAsar) should be turned off together with code signing: flipping them
+# invalidates an unsigned arm64 macOS binary, so the app would not start. See specs/025-desktop-release/tasks.md.
 # Native modules cannot be loaded from inside the asar archive.
 asarUnpack:
   - "**/*.node"

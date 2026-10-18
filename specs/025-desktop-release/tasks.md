@@ -7,3 +7,4 @@
 - [x] T006 README for the desktop app
 - [ ] T007 Signing and notarization credentials, application icon (owner)
 - [ ] T008 Build and test the Windows and Linux installers and a real update from a published release (owner / CI)
+- [ ] T009 Turn off unused Electron fuses (runAsNode, NODE_OPTIONS, onlyLoadAppFromAsar, ASAR integrity) in an afterPack step together with signing; tried via `electronFuses`, but on an unsigned macOS arm64 build it stops the app from starting

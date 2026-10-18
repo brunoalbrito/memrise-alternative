@@ -8,7 +8,7 @@ const csp = [
   "default-src 'self'",
   "img-src 'self' data: blob: membetter-media:",
   "media-src 'self' blob: membetter-media:",
-  "style-src 'self' 'unsafe-inline'",
+  `style-src 'self'${isDev ? " 'unsafe-inline'" : ""}`,
   "script-src 'self'",
   "connect-src 'self'" + (isDev ? " ws://localhost:* http://localhost:*" : ""),
   "object-src 'none'",
@@ -36,6 +36,8 @@ export function createMainWindow(): BrowserWindow {
 
   win.once("ready-to-show", () => win.show());
 
+  // The app never needs camera, microphone, location or notifications.
+  win.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BackupConfigData, BackupEntryData } from "../../../../electron/shared/api";
 import { getApi } from "../../../shared/api";
 import { Button } from "../../../shared/ui/Button";
+import { flushPendingSaves } from "../../home";
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 const size = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
@@ -43,6 +44,7 @@ export function BackupDialog({ onClose }: { onClose: () => void }) {
   const backUpNow = async () => {
     setBusy(true);
     setStatus("Backing up…");
+    await flushPendingSaves();
     const result = await getApi().backup.runNow();
     setBusy(false);
     setStatus(result.ok ? "Backup saved." : result.error.message);
@@ -57,6 +59,7 @@ export function BackupDialog({ onClose }: { onClose: () => void }) {
   const restore = async (entry: BackupEntryData) => {
     setBusy(true);
     setStatus("Restoring…");
+    await flushPendingSaves();
     const result = await getApi().backup.restore(entry.id);
     if (!result.ok) {
       setBusy(false);

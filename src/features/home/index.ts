@@ -5,7 +5,7 @@ export { TopAppBar } from "./components/TopAppBar";
 export { getVisibleCourses, useCourse } from "./hooks/useAllCourses";
 export { getCourseLevels, useCourseLevels } from "./hooks/useCourseLevels";
 export { countsFromLevels, wordHasText } from "./model/counts";
-export { useLearnerStore, CourseNotFoundError } from "./store/learnerStore";
+export { flushPendingSaves, useLearnerStore, CourseNotFoundError } from "./store/learnerStore";
 export { draftFromCourse } from "./model/draft";
 export { languages, DEFAULT_SPEAKERS_LANGUAGE_ID } from "./data/languages";
 export { parseTags } from "./model/tags";
