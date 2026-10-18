@@ -1,1 +1,0 @@
-export { EditCoursePage } from "./EditCoursePage";

@@ -1,13 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getLanguageById } from "../data/languages";
+import { deleteMedia } from "../../../shared/media/mediaStore";
 import { sampleCourses } from "../data/sampleCourses";
+import { sampleLevels } from "../data/sampleLevels";
 import { parseTags } from "../model/tags";
 import {
   GOAL_VALUES,
   type Course,
   type CourseDraft,
   type CourseEdit,
+  type CourseLevel,
   type GoalValue,
 } from "../model/types";
 
@@ -23,16 +26,18 @@ interface LearnerState {
   removedCourseIds: string[];
   createdCourses: Course[];
   courseEdits: Record<string, CourseEdit>;
+  courseLevels: Record<string, CourseLevel[]>;
   setGoal: (courseId: string, value: GoalValue | null) => void;
   removeCourse: (courseId: string) => void;
   restoreCourses: () => void;
   addCourse: (draft: CourseDraft) => string;
   updateCourse: (courseId: string, draft: CourseDraft) => void;
+  setCourseLevels: (courseId: string, levels: CourseLevel[]) => void;
 }
 
 type PersistedLearner = Pick<
   LearnerState,
-  "goals" | "removedCourseIds" | "createdCourses" | "courseEdits"
+  "goals" | "removedCourseIds" | "createdCourses" | "courseEdits" | "courseLevels"
 >;
 
 const sampleIds = new Set(sampleCourses.map((course) => course.id));
@@ -53,6 +58,39 @@ function buildEdit(base: Course, draft: CourseDraft): CourseEdit {
       ? `lang-${draft.teachingLanguageId}`
       : base.categoryId,
   };
+}
+
+function levelsOf(
+  courseLevels: Record<string, CourseLevel[]>,
+  courseId: string,
+): CourseLevel[] {
+  return courseLevels[courseId] ?? sampleLevels[courseId] ?? [];
+}
+
+function referencedMediaIds(
+  courseLevels: Record<string, CourseLevel[]>,
+  courseIds: string[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const courseId of courseIds) {
+    for (const level of levelsOf(courseLevels, courseId)) {
+      for (const word of level.words) {
+        for (const ref of [...word.images, ...word.audio]) ids.add(ref.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function allCourseIds(createdCourses: Course[]): string[] {
+  return [...sampleIds, ...createdCourses.map((course) => course.id)];
+}
+
+/** Deletes stored files that were referenced before a change and are not referenced after it. */
+function cleanupMedia(before: Set<string>, after: Set<string>) {
+  for (const id of before) {
+    if (!after.has(id)) deleteMedia(id).catch(() => {});
+  }
 }
 
 function isNonNegativeInteger(value: unknown): boolean {
@@ -79,6 +117,7 @@ export const useLearnerStore = create<LearnerState>()(
       removedCourseIds: [],
       createdCourses: [],
       courseEdits: {},
+      courseLevels: {},
       setGoal: (courseId, value) =>
         set((state) => {
           const goals = { ...state.goals };
@@ -88,24 +127,31 @@ export const useLearnerStore = create<LearnerState>()(
         }),
       removeCourse: (courseId) =>
         set((state) => {
+          const ids = allCourseIds(state.createdCourses);
+          const before = referencedMediaIds(state.courseLevels, ids);
+          const courseLevels = { ...state.courseLevels };
+          delete courseLevels[courseId];
           if (state.createdCourses.some((course) => course.id === courseId)) {
             const goals = { ...state.goals };
             delete goals[courseId];
-            return {
-              createdCourses: state.createdCourses.filter(
-                (course) => course.id !== courseId,
-              ),
-              goals,
-            };
+            const createdCourses = state.createdCourses.filter(
+              (course) => course.id !== courseId,
+            );
+            cleanupMedia(
+              before,
+              referencedMediaIds(courseLevels, allCourseIds(createdCourses)),
+            );
+            return { createdCourses, goals, courseLevels };
           }
           const courseEdits = { ...state.courseEdits };
           delete courseEdits[courseId];
-          return state.removedCourseIds.includes(courseId)
-            ? state
-            : {
-                removedCourseIds: [...state.removedCourseIds, courseId],
-                courseEdits,
-              };
+          if (state.removedCourseIds.includes(courseId)) return state;
+          cleanupMedia(before, referencedMediaIds(courseLevels, ids));
+          return {
+            removedCourseIds: [...state.removedCourseIds, courseId],
+            courseEdits,
+            courseLevels,
+          };
         }),
       restoreCourses: () => set({ removedCourseIds: [] }),
       addCourse: (draft) => {
@@ -128,9 +174,20 @@ export const useLearnerStore = create<LearnerState>()(
           description: description === "" ? undefined : description,
           shortDescription: shortDescription === "" ? undefined : shortDescription,
         };
-        set((state) => ({ createdCourses: [...state.createdCourses, course] }));
+        set((state) => ({
+          createdCourses: [...state.createdCourses, course],
+          courseLevels: { ...state.courseLevels, [id]: [] },
+        }));
         return id;
       },
+      setCourseLevels: (courseId, levels) =>
+        set((state) => {
+          const ids = allCourseIds(state.createdCourses);
+          const before = referencedMediaIds(state.courseLevels, ids);
+          const courseLevels = { ...state.courseLevels, [courseId]: levels };
+          cleanupMedia(before, referencedMediaIds(courseLevels, ids));
+          return { courseLevels };
+        }),
       updateCourse: (courseId, draft) =>
         set((state) => {
           const created = state.createdCourses.find((c) => c.id === courseId);
@@ -163,6 +220,7 @@ export const useLearnerStore = create<LearnerState>()(
         removedCourseIds: state.removedCourseIds,
         createdCourses: state.createdCourses,
         courseEdits: state.courseEdits,
+        courseLevels: state.courseLevels,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<PersistedLearner>;
@@ -189,7 +247,24 @@ export const useLearnerStore = create<LearnerState>()(
               getLanguageById(edit.speakersLanguageId) !== undefined);
           if (sampleIds.has(id) && languagesValid) courseEdits[id] = edit;
         }
-        return { ...current, goals, removedCourseIds, createdCourses, courseEdits };
+        const validIds = new Set([...sampleIds, ...createdCourses.map((c) => c.id)]);
+        const courseLevels: Record<string, CourseLevel[]> = {};
+        for (const [id, levels] of Object.entries(saved.courseLevels ?? {})) {
+          const wellFormed =
+            Array.isArray(levels) &&
+            levels.every(
+              (level) => Array.isArray(level.words) && typeof level.name === "string",
+            );
+          if (validIds.has(id) && wellFormed) courseLevels[id] = levels;
+        }
+        return {
+          ...current,
+          goals,
+          removedCourseIds,
+          createdCourses,
+          courseEdits,
+          courseLevels,
+        };
       },
     },
   ),

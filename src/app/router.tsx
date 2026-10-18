@@ -2,7 +2,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 import { HomePage } from "../features/home";
 import { CourseDetailPage, LevelPlaceholder } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
-import { EditCoursePage } from "../features/edit-course";
+import { CourseEditorPage } from "../features/course-editor";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
 
 export const router = createBrowserRouter([
@@ -29,7 +29,10 @@ export const router = createBrowserRouter([
     element: <CoursePlaceholder title="Learn new words" />,
   },
   { path: "/course/:id/share", element: <CoursePlaceholder title="Tweet" /> },
-  { path: "/course/:id/edit", element: <EditCoursePage /> },
+  { path: "/course/:id/edit", element: <CourseEditorPage tab="levels" /> },
+  { path: "/course/:id/edit/details", element: <CourseEditorPage tab="details" /> },
+  { path: "/course/:id/edit/databases", element: <CourseEditorPage tab="databases" /> },
+  { path: "/course/:id/edit/contributors", element: <CourseEditorPage tab="contributors" /> },
   {
     path: "/course/:id/leaderboard",
     element: <CoursePlaceholder title="Leaderboard" />,

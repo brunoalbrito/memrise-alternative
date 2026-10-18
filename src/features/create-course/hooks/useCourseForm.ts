@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
+import { storageWritable } from "../../../shared/storage/storageWritable";
 import { CourseNotFoundError, type CourseDraft } from "../../home";
 import {
   FIELD_ORDER,
@@ -10,19 +11,9 @@ import {
 
 const STORAGE_ERROR = "Could not save your course on this device. Please try again.";
 
-function storageWritable(): boolean {
-  try {
-    localStorage.setItem("membetter.probe", "1");
-    localStorage.removeItem("membetter.probe");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 interface UseCourseFormOptions {
   initialValues: CourseDraft;
-  onSubmit: (values: CourseDraft) => void;
+  onSubmit: (values: CourseDraft) => string | void;
   successPath: string;
 }
 
@@ -78,8 +69,10 @@ export function useCourseForm({
     }
 
     submitted.current = true;
+    let destination = successPath;
     try {
-      onSubmit(values);
+      const result = onSubmit(values);
+      if (typeof result === "string") destination = result;
     } catch (error) {
       if (error instanceof CourseNotFoundError) {
         // The destination page shows "Course not found".
@@ -91,7 +84,11 @@ export function useCourseForm({
       return;
     }
     setStorageError(null);
-    navigate(successPath);
+    navigate(destination);
+    // When the destination is this same page (Details tab), allow saving again later.
+    window.setTimeout(() => {
+      submitted.current = false;
+    }, 600);
   };
 
   return { values, errors, storageError, setValue, registerRef, submit };

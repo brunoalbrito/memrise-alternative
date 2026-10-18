@@ -36,9 +36,9 @@ export function CreateCoursePage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <CourseForm
             initialValues={emptyDraft}
-            onSubmit={(values) => {
-              useLearnerStore.getState().addCourse(values);
-            }}
+            onSubmit={(values) =>
+              `/course/${useLearnerStore.getState().addCourse(values)}/edit`
+            }
             successPath="/"
             submitLabel="Create Course"
           />

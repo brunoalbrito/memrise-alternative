@@ -1,4 +1,4 @@
-import type { Course } from "../../home";
+import { wordHasText, type CourseLevel } from "../../home";
 
 export interface Level {
   number: number;
@@ -9,20 +9,16 @@ export interface Level {
 
 export type LevelState = "completed" | "in-progress" | "not-started";
 
-/**
- * Splits totalItems evenly over the level names (remainder to the earliest levels) and fills
- * itemsLearned sequentially from level 1. Sums always match the course totals.
- */
-export function buildLevels(course: Course, names: string[]): Level[] {
-  if (course.totalItems === 0 || names.length === 0) return [];
-  const base = Math.floor(course.totalItems / names.length);
-  const remainder = course.totalItems % names.length;
-  let learnedLeft = course.itemsLearned;
-  return names.map((name, index) => {
-    const totalWords = base + (index < remainder ? 1 : 0);
-    const learnedWords = Math.min(totalWords, learnedLeft);
-    learnedLeft -= learnedWords;
-    return { number: index + 1, name, totalWords, learnedWords };
+/** Course page view of the stored levels. */
+export function levelViews(levels: CourseLevel[]): Level[] {
+  return levels.map((level, index) => {
+    const words = level.words.filter(wordHasText);
+    return {
+      number: index + 1,
+      name: level.name,
+      totalWords: words.length,
+      learnedWords: words.filter((word) => word.learned).length,
+    };
   });
 }
 

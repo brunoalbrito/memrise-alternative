@@ -12,7 +12,7 @@ const languageOptions = languages.map((language) => ({
 
 interface CourseFormProps {
   initialValues: CourseDraft;
-  onSubmit: (values: CourseDraft) => void;
+  onSubmit: (values: CourseDraft) => string | void;
   successPath: string;
   submitLabel: string;
 }

@@ -74,3 +74,32 @@ export type GoalValue = (typeof GOAL_VALUES)[number];
 export type FilterValue = "all" | "goal" | "teaching" | `cat:${string}`;
 
 export type PrimaryAction = "speed-review" | "learn-new-words";
+
+export interface MediaRef {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+}
+
+export interface Word {
+  id: string;
+  /** A row counts as a word only when `text.trim()` is not empty */
+  text: string;
+  meaning: string;
+  example: string;
+  /** At most 5 entries, each an image */
+  images: MediaRef[];
+  /** At most 5 entries, each an audio file */
+  audio: MediaRef[];
+  learned: boolean;
+}
+
+export interface CourseLevel {
+  id: string;
+  /** Default "Level N" for new levels */
+  name: string;
+  /** How the level is tested, for example "Test on Word, prompt with Images." */
+  tested: string;
+  words: Word[];
+}

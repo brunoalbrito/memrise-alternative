@@ -2,16 +2,18 @@ import {
   getCategoryById,
   percentLearned,
   useCourse,
+  useCourseLevels,
   useLearnerStore,
 } from "../../home";
 import { defaultExtras, sampleCourseExtras } from "../data/sampleCourseExtras";
 import { categoryPath } from "../model/breadcrumb";
-import { buildLevels } from "../model/levels";
+import { levelViews } from "../model/levels";
 
 export function useCourseDetail(id: string) {
   const course = useCourse(id);
   const removed = useLearnerStore((state) => state.removedCourseIds);
   const goal = useLearnerStore((state) => (course ? state.goals[course.id] : undefined));
+  const storedLevels = useCourseLevels(id);
 
   if (!course || removed.includes(course.id)) return null;
 
@@ -27,7 +29,7 @@ export function useCourseDetail(id: string) {
     longTermCount: extras.longTermCount,
     ignoredCount: extras.ignoredCount,
     dueCount: course.itemsDue,
-    levels: buildLevels(course, extras.levelNames),
+    levels: levelViews(storedLevels),
     goal,
   };
 }

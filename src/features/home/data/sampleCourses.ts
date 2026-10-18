@@ -1,5 +1,7 @@
 import type { Category, Course } from "../model/types";
+import { countsFromLevels } from "../model/counts";
 import { languageCategories } from "./languages";
+import { sampleLevels } from "./sampleLevels";
 
 export const sampleCategories: Category[] = [
   { id: "computers", name: "Computers & Engineering", icon: "💻" },
@@ -8,14 +10,14 @@ export const sampleCategories: Category[] = [
   { id: "spanish-mx", name: "Spanish (Mexico)", icon: "🇲🇽" },
 ];
 
-export const sampleCourses: Course[] = [
+const baseSamples: Course[] = [
   {
     id: "english-visual-dictionary",
     title: "English Visual Dictionary",
     categoryId: "english",
-    totalItems: 2363,
-    itemsLearned: 159,
-    itemsDue: 26,
+    totalItems: 0,
+    itemsLearned: 0,
+    itemsDue: 3,
     learnedToday: 0,
     teaching: false,
     teachingLanguageId: "en-gb",
@@ -25,7 +27,7 @@ export const sampleCourses: Course[] = [
     id: "irregular-verbs",
     title: "Learn English Irregular Verbs • No Typing",
     categoryId: "english",
-    totalItems: 697,
+    totalItems: 0,
     itemsLearned: 0,
     itemsDue: 0,
     learnedToday: 0,
@@ -37,7 +39,7 @@ export const sampleCourses: Course[] = [
     id: "english-polyglot",
     title: "Learn English for Polyglot • No Typing",
     categoryId: "english",
-    totalItems: 5385,
+    totalItems: 0,
     itemsLearned: 0,
     itemsDue: 0,
     learnedToday: 0,
@@ -49,8 +51,8 @@ export const sampleCourses: Course[] = [
     id: "japanese-hiragana",
     title: "Japanese Hiragana Starter",
     categoryId: "japanese",
-    totalItems: 46,
-    itemsLearned: 46,
+    totalItems: 0,
+    itemsLearned: 0,
     itemsDue: 0,
     learnedToday: 12,
     teaching: true,
@@ -61,9 +63,9 @@ export const sampleCourses: Course[] = [
     id: "japanese-n5-vocab",
     title: "Japanese N5 Essential Vocabulary",
     categoryId: "japanese",
-    totalItems: 800,
-    itemsLearned: 212,
-    itemsDue: 41,
+    totalItems: 0,
+    itemsLearned: 0,
+    itemsDue: 2,
     learnedToday: 8,
     teaching: false,
     teachingLanguageId: "ja",
@@ -73,9 +75,9 @@ export const sampleCourses: Course[] = [
     id: "spanish-mexico-basics",
     title: "Spanish (Mexico) Everyday Phrases",
     categoryId: "spanish-mx",
-    totalItems: 420,
-    itemsLearned: 97,
-    itemsDue: 9,
+    totalItems: 0,
+    itemsLearned: 0,
+    itemsDue: 1,
     learnedToday: 5,
     teaching: true,
     teachingLanguageId: "es-mx",
@@ -86,9 +88,9 @@ export const sampleCourses: Course[] = [
     title:
       "Computer Networking Fundamentals: Protocols, Layers, Addressing, Routing and Troubleshooting for Beginners",
     categoryId: "computers",
-    totalItems: 310,
-    itemsLearned: 15,
-    itemsDue: 3,
+    totalItems: 0,
+    itemsLearned: 0,
+    itemsDue: 1,
     learnedToday: 0,
     teaching: false,
     teachingLanguageId: "en-us",
@@ -107,6 +109,12 @@ export const sampleCourses: Course[] = [
     speakersLanguageId: "en-gb",
   },
 ];
+
+/** Sample courses with word counts derived from their sample levels. */
+export const sampleCourses: Course[] = baseSamples.map((course) => ({
+  ...course,
+  ...countsFromLevels(sampleLevels[course.id] ?? [], course.itemsDue),
+}));
 
 export function getCourseById(id: string): Course | undefined {
   return sampleCourses.find((course) => course.id === id);
