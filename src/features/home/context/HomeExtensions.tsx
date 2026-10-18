@@ -8,6 +8,7 @@ import type { Course } from "../model/types";
 export interface HomeExtensions {
   toolbar?: ReactNode;
   exportCourse?: (course: Course) => void;
+  exportAnki?: (course: Course) => void;
 }
 
 const HomeExtensionsContext = createContext<HomeExtensions>({});

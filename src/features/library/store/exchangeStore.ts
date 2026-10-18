@@ -20,6 +20,7 @@ interface ExchangeState {
   dismissNotice: () => void;
   exportCourse: (course: Course) => void;
   exportLibrary: () => void;
+  exportAnki: (course: Course) => Promise<void>;
   confirmExport: (includeProgress: boolean) => Promise<void>;
   cancelExport: () => void;
   /** Pick a file with the native dialog, or use `path` (drop or OS open), then show the import dialog. */
@@ -66,6 +67,20 @@ export const useExchangeStore = create<ExchangeState>()((set, get) => {
       const items = exportItemsForAll();
       if (items.length === 0) return set({ notice: { kind: "info", text: "There are no courses to export." } });
       set({ pendingExport: items, notice: null });
+    },
+    exportAnki: async (course) => {
+      if (get().busy) return;
+      set({ busy: "Exporting for Anki…", progress: null, notice: null });
+      try {
+        const result = await getApi().anki.exportDeck(exportItemFor(course));
+        if (!result.ok) return fail(result.error.message);
+        set({
+          busy: null,
+          notice: result.data.saved ? { kind: "info", text: `Exported ${plural(result.data.notes, "word")} for Anki. Open the file with Anki to import it.` } : null,
+        });
+      } catch {
+        fail("The export could not be completed.");
+      }
     },
     cancelExport: () => set({ pendingExport: null }),
     confirmExport: async (includeProgress) => {

@@ -49,6 +49,12 @@ const api: MembetterApi = {
     mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
     setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
   },
+  anki: {
+    exportDeck: (item) => ipcRenderer.invoke("anki:export", { item }),
+    pickCsv: () => ipcRenderer.invoke("anki:pickCsv"),
+    previewCsv: (path) => ipcRenderer.invoke("anki:previewCsv", { path }),
+    importCsv: (input) => ipcRenderer.invoke("anki:importCsv", input),
+  },
   backup: {
     getConfig: () => ipcRenderer.invoke("backup:getConfig"),
     setConfig: (patch) => ipcRenderer.invoke("backup:setConfig", patch),

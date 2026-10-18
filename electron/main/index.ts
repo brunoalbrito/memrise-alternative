@@ -8,6 +8,7 @@ import { z } from "zod";
 import { MediaError, MediaStore } from "../services/media";
 import { handleMediaProtocol, registerMediaScheme } from "./protocol";
 import { ExchangeError, importArchive, previewOf, readArchive, writeArchive, type ParsedArchive } from "../services/exchange";
+import { CsvImportSchema, importCsv, previewCsv, writeApkg } from "../services/anki";
 import { Backups, restoreBackup } from "../services/backup";
 import { BackupConfigPatchSchema, BackupIdSchema } from "../shared/schemas";
 import { AiService } from "../services/ai/service";
@@ -16,7 +17,7 @@ import { Settings } from "../services/settings";
 import { osCipher, shrinkImage } from "./secureStorage";
 import { CourseIdSchema, EndSessionSchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, Study, StartSessionSchema } from "../services/study";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
-import { ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
+import { ExportItemSchema, ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
 import { createMainWindow } from "./window";
 
@@ -169,6 +170,24 @@ function registerIpc(): void {
     return null;
   });
   handle("study:end", EndSessionSchema, ({ sessionId, status }) => study!.end(sessionId, status));
+  handle("anki:export", z.object({ item: ExportItemSchema }), async ({ item }) => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined;
+    const suggested = item.course.title.replace(/[^\p{L}\p{N} _-]/gu, "").trim() || "course";
+    const options = { title: "Export for Anki", defaultPath: `${suggested}.apkg`, filters: [{ name: "Anki package", extensions: ["apkg"] }] };
+    const choice = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+    if (choice.canceled || !choice.filePath) return { saved: false, notes: 0 };
+    const path = choice.filePath.endsWith(".apkg") ? choice.filePath : `${choice.filePath}.apkg`;
+    const result = await writeApkg(item, media!, path);
+    return { saved: true, notes: result.notes };
+  });
+  handle("anki:pickCsv", null, async () => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options = { title: "Import word list", properties: ["openFile" as const], filters: [{ name: "Word list", extensions: ["csv", "tsv", "txt"] }] };
+    const choice = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    return choice.canceled ? null : (choice.filePaths[0] ?? null);
+  });
+  handle("anki:previewCsv", InspectSchema, ({ path }) => previewCsv(path));
+  handle("anki:importCsv", CsvImportSchema, (input) => importCsv(library!.db, input));
   handle("backup:getConfig", null, () => backups!.config());
   handle("backup:setConfig", BackupConfigPatchSchema, (patch) => backups!.setConfig(patch));
   handle("backup:chooseFolder", null, async () => {

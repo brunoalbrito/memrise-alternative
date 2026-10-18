@@ -92,6 +92,27 @@ export interface BackupEntryData {
   sizeBytes: number;
 }
 
+export interface CsvPreviewData {
+  delimiter: string;
+  columns: number;
+  totalRows: number;
+  sample: string[][];
+  looksLikeHeader: boolean;
+}
+export interface CsvImportInput {
+  path: string;
+  hasHeader: boolean;
+  mapping: { word: number; meaning: number | null; example: number | null; ipa: number | null };
+  title: string;
+  teachingLanguageId: string;
+  speakersLanguageId: string;
+}
+export interface CsvImportResult {
+  courseId: string;
+  imported: number;
+  skipped: { row: number; reason: string }[];
+}
+
 /** Result envelope returned by every `window.api` call. */
 export type ApiError = { code: string; message: string };
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -156,6 +177,13 @@ export interface MembetterApi {
     stats(courseId: string): Promise<Result<CourseStats>>;
     mark(courseId: string, wordId: string, flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
     setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
+  };
+  anki: {
+    /** Ask where to save, then write an Anki package (.apkg) for this course. */
+    exportDeck(item: ExportItem): Promise<Result<{ saved: boolean; notes: number }>>;
+    pickCsv(): Promise<Result<string | null>>;
+    previewCsv(path: string): Promise<Result<CsvPreviewData>>;
+    importCsv(input: CsvImportInput): Promise<Result<CsvImportResult>>;
   };
   backup: {
     getConfig(): Promise<Result<BackupConfigData>>;

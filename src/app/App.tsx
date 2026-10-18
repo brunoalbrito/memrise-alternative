@@ -49,6 +49,9 @@ export function App() {
         exportCourse: isDesktop()
           ? (course) => void useExchangeStore.getState().exportCourse(course)
           : undefined,
+        exportAnki: isDesktop()
+          ? (course) => void useExchangeStore.getState().exportAnki(course)
+          : undefined,
       }}
     >
       <RouterProvider router={router} />

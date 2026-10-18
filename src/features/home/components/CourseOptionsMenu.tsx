@@ -26,7 +26,7 @@ export function CourseOptionsMenu({
 }: CourseOptionsMenuProps) {
   const [dialog, setDialog] = useState<"goal" | "remove" | "newwords" | null>(null);
   const setGoal = useLearnerStore((state) => state.setGoal);
-  const { exportCourse } = useHomeExtensions();
+  const { exportCourse, exportAnki } = useHomeExtensions();
 
   const items: MenuItem[] = [
     { kind: "item", id: "set-goal", label: "Set daily goal" },
@@ -35,6 +35,7 @@ export function CourseOptionsMenu({
       ? [{ kind: "item", id: "clear-goal", label: "Clear goal" } as MenuItem]
       : []),
     ...(exportCourse ? [{ kind: "item", id: "export", label: "Export course" } as MenuItem] : []),
+    ...(exportAnki ? [{ kind: "item", id: "export-anki", label: "Export for Anki" } as MenuItem] : []),
     { kind: "item", id: "remove", label: "Remove course" },
   ];
 
@@ -43,6 +44,7 @@ export function CourseOptionsMenu({
     else if (id === "new-words") setDialog("newwords");
     else if (id === "clear-goal") setGoal(course.id, null);
     else if (id === "export") exportCourse?.(course);
+    else if (id === "export-anki") exportAnki?.(course);
     else if (id === "remove") setDialog("remove");
   };
 
