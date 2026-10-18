@@ -37,6 +37,8 @@ interface LearnerState {
   setGoal: (courseId: string, value: GoalValue | null) => void;
   removeCourse: (courseId: string) => void;
   restoreCourses: () => void;
+  /** Copies the built-in sample courses into the library as the learner's own courses (once each). */
+  installSamples: () => void;
   addCourse: (draft: CourseDraft) => string;
   updateCourse: (courseId: string, draft: CourseDraft) => void;
   setCourseLevels: (courseId: string, levels: CourseLevel[]) => void;
@@ -228,6 +230,31 @@ export const useLearnerStore = create<LearnerState>()((set, get) => ({
   restoreCourses: () => {
     set({ removedCourseIds: [] });
     send({ type: "restoreHidden" });
+  },
+  installSamples: () => {
+    const state = get();
+    const taken = new Set(state.createdCourses.map((course) => course.id));
+    const courses: Course[] = [];
+    const levelsByCourse: Record<string, CourseLevel[]> = {};
+    for (const sample of sampleCourses) {
+      const id = `custom-sample-${sample.id}`;
+      if (taken.has(id)) continue;
+      courses.push({ ...sample, id, teaching: true, itemsLearned: 0, itemsDue: 0, learnedToday: 0 });
+      levelsByCourse[id] = (sampleLevels[sample.id] ?? []).map((level) => ({
+        ...level,
+        id: crypto.randomUUID(),
+        words: level.words.map((word) => ({ ...word, id: crypto.randomUUID(), learned: false })),
+      }));
+    }
+    if (courses.length === 0) return;
+    set({
+      createdCourses: [...state.createdCourses, ...courses],
+      courseLevels: { ...state.courseLevels, ...levelsByCourse },
+    });
+    for (const course of courses) {
+      send({ type: "upsertCourse", course });
+      send({ type: "saveLevels", courseId: course.id, levels: levelsByCourse[course.id]! });
+    }
   },
   addCourse: (draft) => {
     const id = `custom-${crypto.randomUUID()}`;

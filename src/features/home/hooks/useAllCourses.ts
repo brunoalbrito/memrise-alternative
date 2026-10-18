@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { sampleCourses } from "../data/sampleCourses";
 import { sampleLevels } from "../data/sampleLevels";
 import { countsFromLevels } from "../model/counts";
 import { overlayLearned, progressCounts, type ProgressCards } from "../model/progress";
@@ -14,7 +13,7 @@ export interface ProgressInput {
 }
 
 /**
- * Sample and created courses with the learner's edits and counts derived from their levels. With real progress
+ * The learner's courses with counts derived from their levels. With real progress
  * (desktop app), learned, due and "today" counts come from practice; otherwise the sample numbers are used.
  */
 export function mergeCourses(
@@ -23,10 +22,9 @@ export function mergeCourses(
   courseLevels: Record<string, CourseLevel[]>,
   progress: ProgressInput | null = null,
 ): Course[] {
-  return [
-    ...sampleCourses.map((course) => ({ ...course, ...courseEdits[course.id] })),
-    ...createdCourses,
-  ].map((course) => {
+  // The library starts empty: only the learner's own courses are listed (sample courses can be installed from Home).
+  void courseEdits;
+  return createdCourses.map((course) => {
     const levels = courseLevels[course.id] ?? sampleLevels[course.id] ?? [];
     if (!progress) return { ...course, ...countsFromLevels(levels, course.itemsDue) };
     const withProgress = overlayLearned(levels, progress.cards);

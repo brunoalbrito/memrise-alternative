@@ -13,7 +13,7 @@ export function HomePage() {
   const { hasCourses, courses, categories, filter, filterName, setFilter, goals } =
     useFilteredCourses();
   const { toolbar } = useHomeExtensions();
-  const restoreCourses = useLearnerStore((state) => state.restoreCourses);
+  const installSamples = useLearnerStore((state) => state.installSamples);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -36,9 +36,9 @@ export function HomePage() {
         <HomeErrorBoundary>
           {!hasCourses ? (
             <EmptyState
-              message="You have no courses"
-              actionLabel="Restore sample courses"
-              onAction={restoreCourses}
+              message="You have no courses yet. Create one, import a file, or try the samples."
+              actionLabel="Install sample courses"
+              onAction={installSamples}
             />
           ) : courses.length === 0 ? (
             <EmptyState
