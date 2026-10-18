@@ -1,0 +1,10 @@
+# Spec Kit extension hooks.
+# Each hook runs at the named lifecycle point of the matching /speckit-* command.
+hooks:
+  after_implement:
+    - extension: git
+      command: speckit.git.commit
+      enabled: true
+      optional: false
+      description: Commit and push the implemented work to origin
+      prompt: Commit all changes with a conventional commit message and push to origin
