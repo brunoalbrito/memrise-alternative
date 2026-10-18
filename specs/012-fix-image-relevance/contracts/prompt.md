@@ -1,3 +1,6 @@
+> **Prompt superseded by `specs/014-fix-image-trigger-and-text`**: the sentence is no longer sent as quoted text; a
+> short visual scene description is sent instead. Kept for history.
+
 # Contract: Image prompt (supersedes the prompt in specs/011-ai-word-image/contracts/gemini-image.md)
 
 ```

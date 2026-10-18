@@ -12,6 +12,9 @@
 
 ### User Story 1 - Get an image for the chosen sentence (Priority: P1)
 
+> Updated by `specs/014-fix-image-trigger-and-text`: the picture is now created only after the learner chooses a
+> sentence, not automatically when the suggestions open.
+
 In the AI suggestions panel (Auto-fill), once the learner has a sentence selected, the app creates a picture that illustrates the word as used in that sentence and shows it in the panel. The Best sentence is selected when the suggestions open, so the picture starts being created right away; when the learner selects a different sentence, a new picture is created for it. When the learner presses "Apply", the picture is added to the word's Images cell together with the definition, sentence, IPA and audio.
 
 **Why this priority**: Pictures are the most memorable part of a vocabulary card, and making them by hand takes the most time of all the parts.

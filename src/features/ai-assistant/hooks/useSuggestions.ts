@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AiError, type AiErrorKind } from "../api/errors";
-import { generateWordAudio, generateWordText } from "../api/gemini";
-import { generateWordImage } from "../api/pollinations";
+import { describeScene, generateWordAudio, generateWordText } from "../api/gemini";
+import { buildFallbackScene, buildImagePrompt, generateWordImage } from "../api/pollinations";
 import type { WordSuggestion } from "../model/suggestion";
 import { useAiStore } from "../store/aiStore";
 
@@ -28,12 +28,15 @@ export function useSuggestions(word: string, languageName: string) {
   const [image, setImage] = useState<ImageState>({ status: "idle" });
   const imageControllerRef = useRef<AbortController | null>(null);
   const imageRunRef = useRef(0);
+  /** Sentence index a picture is being created for or is ready for. Synchronous, so one click cannot start two requests. */
+  const imageIndexRef = useRef<number | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
   const stopImage = () => {
     imageRunRef.current += 1;
     imageControllerRef.current?.abort("cancel");
+    imageIndexRef.current = null;
   };
 
   /** Creates a picture for one sentence. A newer request cancels the previous one. */
@@ -49,11 +52,25 @@ export function useSuggestions(word: string, languageName: string) {
       setImage({ status: "error", kind: "image-no-key" });
       return;
     }
+    imageIndexRef.current = index;
     setImage({ status: "loading", index });
     try {
+      const { apiKey, textModel, speechModel } = useAiStore.getState();
+      let scene: string;
+      try {
+        scene = await describeScene(
+          word.trim(),
+          sentence,
+          { apiKey, textModel, speechModel },
+          controller.signal,
+        );
+      } catch (error) {
+        // A cancellation must stop everything; any other problem uses the fallback scene.
+        if (controller.signal.aborted) throw error;
+        scene = buildFallbackScene(sentence);
+      }
       const blob = await generateWordImage(
-        word.trim(),
-        sentence,
+        buildImagePrompt(scene),
         pollinationsKey,
         pollinationsModel,
         controller.signal,
@@ -62,6 +79,7 @@ export function useSuggestions(word: string, languageName: string) {
       setImage({ status: "ready", index, blob });
     } catch (error) {
       if (runId !== imageRunRef.current) return;
+      imageIndexRef.current = null;
       if (error instanceof AiError) setImage({ status: "error", kind: error.kind });
       else if (controller.signal.reason !== "cancel") {
         setImage({ status: "error", kind: "image" });
@@ -101,7 +119,6 @@ export function useSuggestions(word: string, languageName: string) {
         selected: text.best,
         audioNote: blob ? null : "Audio could not be created.",
       });
-      void startImage(text.sentences[text.best], text.best);
     } catch (error) {
       if (runId !== runIdRef.current) return;
       if (error instanceof AiError) setState({ status: "error", kind: error.kind });
@@ -130,9 +147,11 @@ export function useSuggestions(word: string, languageName: string) {
     void execute();
   };
 
-  const select = (index: number) => {
-    if (state.status !== "ready" || index === state.selected) return;
-    setState({ ...state, selected: index });
+  /** The learner chose a sentence: select it and create its picture (once per sentence). */
+  const choose = (index: number) => {
+    if (state.status !== "ready") return;
+    if (index !== state.selected) setState({ ...state, selected: index });
+    if (imageIndexRef.current === index) return;
     void startImage(state.suggestion.sentences[index], index);
   };
 
@@ -148,5 +167,5 @@ export function useSuggestions(word: string, languageName: string) {
     stopImage();
   };
 
-  return { state, image, retry, select, newImage, cancel };
+  return { state, image, retry, choose, newImage, cancel };
 }

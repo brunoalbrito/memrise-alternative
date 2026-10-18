@@ -55,7 +55,7 @@ export function SuggestionDialog({
   onOpenSettings,
 }: SuggestionDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { state, image, retry, select, newImage, cancel } = useSuggestions(
+  const { state, image, retry, choose, newImage, cancel } = useSuggestions(
     word,
     languageName,
   );
@@ -146,7 +146,8 @@ export function SuggestionDialog({
                     type="radio"
                     name="sentence"
                     checked={state.selected === index}
-                    onChange={() => select(index)}
+                    onChange={() => choose(index)}
+                    onClick={() => choose(index)}
                     className="mt-1 size-5 accent-primary"
                   />
                   <span className="text-body-large">
@@ -178,6 +179,16 @@ export function SuggestionDialog({
 
           <section className="mt-4">
             <h3 className="text-label-large font-medium text-on-surface-variant">Image</h3>
+            {image.status === "idle" && (
+              <div className="mt-1 flex flex-col items-start gap-2">
+                <p className="text-body-medium text-on-surface-variant">
+                  Select a sentence to create its image.
+                </p>
+                <Button variant="text" onClick={newImage}>
+                  Create image
+                </Button>
+              </div>
+            )}
             {image.status === "loading" && (
               <p aria-live="polite" className="mt-1 text-body-medium">
                 Creating image…

@@ -3,13 +3,17 @@ import { shrinkImage } from "./image";
 
 const BASE = "https://gen.pollinations.ai/image/";
 
-export function buildImagePrompt(word: string, sentence: string): string {
-  return [
-    `Draw a simple, friendly, colourful illustration of the scene described by this sentence: ${JSON.stringify(sentence)}.`,
-    `Show what the sentence says: the people, objects, action and setting it mentions, so that the meaning of the word ${JSON.stringify(word)} is clearly visible in the scene.`,
-    "If the sentence is abstract, show a simple everyday scene that conveys it.",
-    "Square composition, flat illustration style. Do not include any text, letters, numbers, captions, speech bubbles or watermarks.",
-  ].join("\n");
+const STYLE_AND_NO_TEXT =
+  "Simple friendly flat illustration, bright colours, square composition. The image contains no text of any kind: no words, letters, numbers, captions, signs, labels, logos or speech bubbles.";
+
+/** The picture prompt. The learner's sentence is never quoted in it. */
+export function buildImagePrompt(scene: string): string {
+  return `${scene.trim()} ${STYLE_AND_NO_TEXT}`;
+}
+
+/** Used when no scene description could be prepared. Quote characters are removed. */
+export function buildFallbackScene(sentence: string): string {
+  return `Illustrate a scene in which ${sentence.replace(/["“”„«»'‘’`]/g, "").trim().replace(/[.!?…]+$/, "")}.`;
 }
 
 /**
@@ -17,15 +21,14 @@ export function buildImagePrompt(word: string, sentence: string): string {
  * never in the address. An empty model means Pollinations' default.
  */
 export async function generateWordImage(
-  word: string,
-  sentence: string,
+  prompt: string,
   key: string,
   model: string,
   signal: AbortSignal,
 ): Promise<Blob> {
   const query = new URLSearchParams({ width: "768", height: "768" });
   if (model.trim() !== "") query.set("model", model.trim());
-  const url = `${BASE}${encodeURIComponent(buildImagePrompt(word, sentence))}?${query.toString()}`;
+  const url = `${BASE}${encodeURIComponent(prompt)}?${query.toString()}`;
 
   let response: Response;
   try {
