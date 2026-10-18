@@ -1,85 +1,86 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { getApi, isDesktop, type Result } from "../../../shared/api";
 
 export const DEFAULT_TEXT_MODEL = "gemini-3.8-flash";
 export const DEFAULT_SPEECH_MODEL = "gemini-3.8-flash-tts";
 
+/**
+ * What the screens know about AI: which keys are connected (and their last four characters) and the model names.
+ * The keys themselves live only in the app's protected storage; they are sent once when saved and never come back.
+ */
 interface AiState {
-  /** Google AI Studio key. Empty string means not connected. Never log or display in full. */
-  apiKey: string;
+  ready: boolean;
+  googleConnected: boolean;
+  googleLast4: string;
+  pollinationsConnected: boolean;
+  pollinationsLast4: string;
   textModel: string;
   speechModel: string;
-  /** Pollinations key for images. Empty string means not connected. Never log or display in full. */
-  pollinationsKey: string;
-  /** Pollinations image model. Empty means the provider default. */
   pollinationsModel: string;
-  saveKey: (key: string) => boolean;
-  removeKey: () => void;
-  savePollinationsKey: (key: string) => boolean;
-  removePollinationsKey: () => void;
-  setModels: (textModel: string, speechModel: string, pollinationsModel: string) => boolean;
-  restoreModels: () => void;
+  /** The operating system offers only weak protection for saved keys. */
+  weakProtection: boolean;
+  hydrate: () => Promise<void>;
+  saveKey: (provider: "google" | "pollinations", key: string) => Promise<string | null>;
+  removeKey: (provider: "google" | "pollinations") => Promise<void>;
+  setModels: (textModel: string, speechModel: string, pollinationsModel: string) => Promise<string | null>;
+  restoreModels: () => Promise<void>;
 }
 
-const valid = (value: string) => value.trim() !== "" && !/\s/.test(value.trim());
-const noSpaces = (value: string) => !/\s/.test(value.trim());
+const UNAVAILABLE = "AI is available in the desktop app.";
+const error = (result: Result<unknown>): string | null => (result.ok ? null : result.error.message);
 
-export const useAiStore = create<AiState>()(
-  persist(
-    (set) => ({
-      apiKey: "",
-      textModel: DEFAULT_TEXT_MODEL,
-      speechModel: DEFAULT_SPEECH_MODEL,
-      pollinationsKey: "",
-      pollinationsModel: "",
-      saveKey: (key) => {
-        if (!valid(key)) return false;
-        set({ apiKey: key.trim() });
-        return true;
-      },
-      removeKey: () => set({ apiKey: "" }),
-      savePollinationsKey: (key) => {
-        if (!valid(key)) return false;
-        set({ pollinationsKey: key.trim() });
-        return true;
-      },
-      removePollinationsKey: () => set({ pollinationsKey: "" }),
-      setModels: (textModel, speechModel, pollinationsModel) => {
-        if (!valid(textModel) || !valid(speechModel) || !noSpaces(pollinationsModel)) {
-          return false;
-        }
-        set({
-          textModel: textModel.trim(),
-          speechModel: speechModel.trim(),
-          pollinationsModel: pollinationsModel.trim(),
-        });
-        return true;
-      },
-      restoreModels: () =>
-        set({
-          textModel: DEFAULT_TEXT_MODEL,
-          speechModel: DEFAULT_SPEECH_MODEL,
-          pollinationsModel: "",
-        }),
-    }),
-    {
-      name: "membetter.ai",
-      version: 2,
-      // Version 1 stored a Google image model name that must not be sent to Pollinations.
-      migrate: (persisted) => {
-        const { imageModel: _dropped, ...rest } = (persisted ?? {}) as Record<string, unknown>;
-        void _dropped;
-        return rest as unknown as AiState;
-      },
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<AiState>),
-      }),
-    },
-  ),
-);
+export const useAiStore = create<AiState>()((set, get) => ({
+  ready: !isDesktop(),
+  googleConnected: false,
+  googleLast4: "",
+  pollinationsConnected: false,
+  pollinationsLast4: "",
+  textModel: DEFAULT_TEXT_MODEL,
+  speechModel: DEFAULT_SPEECH_MODEL,
+  pollinationsModel: "",
+  weakProtection: false,
+  hydrate: async () => {
+    if (!isDesktop()) return;
+    const result = await getApi().ai.status();
+    if (!result.ok) return;
+    const { google, pollinations, models, weakProtection } = result.data;
+    set({
+      ready: true,
+      googleConnected: google.connected,
+      googleLast4: google.last4,
+      pollinationsConnected: pollinations.connected,
+      pollinationsLast4: pollinations.last4,
+      weakProtection,
+      ...models,
+    });
+  },
+  saveKey: async (provider, key) => {
+    if (!isDesktop()) return UNAVAILABLE;
+    const result = await getApi().ai.saveKey(provider, key);
+    if (!result.ok) return result.error.message;
+    await get().hydrate();
+    return null;
+  },
+  removeKey: async (provider) => {
+    if (!isDesktop()) return;
+    await getApi().ai.removeKey(provider);
+    await get().hydrate();
+  },
+  setModels: async (textModel, speechModel, pollinationsModel) => {
+    if (!isDesktop()) return UNAVAILABLE;
+    const result = await getApi().ai.setModels({ textModel, speechModel, pollinationsModel });
+    const message = error(result);
+    if (message === null) set({ textModel, speechModel, pollinationsModel });
+    return message;
+  },
+  restoreModels: async () => {
+    if (!isDesktop()) return;
+    const result = await getApi().ai.restoreModels();
+    if (result.ok) set({ ...result.data });
+  },
+}));
 
 /** "•••• 1234" for a saved key, "" when there is none. */
-export function maskKey(key: string): string {
-  return key ? `•••• ${key.slice(-4)}` : "";
+export function maskKey(last4: string): string {
+  return last4 ? `•••• ${last4}` : "";
 }

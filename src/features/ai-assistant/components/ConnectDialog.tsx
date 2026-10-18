@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../shared/ui/Button";
 import { AiError, aiMessage } from "../api/errors";
-import { testConnection } from "../api/gemini";
+import { testConnection } from "../api/client";
 import { maskKey, useAiStore } from "../store/aiStore";
 
 interface ConnectDialogProps {
@@ -14,10 +14,13 @@ const inputClasses =
 
 export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const apiKey = useAiStore((state) => state.apiKey);
+  const googleConnected = useAiStore((state) => state.googleConnected);
+  const googleLast4 = useAiStore((state) => state.googleLast4);
+  const weakProtection = useAiStore((state) => state.weakProtection);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
-  const pollinationsKey = useAiStore((state) => state.pollinationsKey);
+  const pollinationsConnected = useAiStore((state) => state.pollinationsConnected);
+  const pollinationsLast4 = useAiStore((state) => state.pollinationsLast4);
   const pollinationsModel = useAiStore((state) => state.pollinationsModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
@@ -37,9 +40,10 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
-  const save = () => {
-    if (!useAiStore.getState().saveKey(keyInput)) {
-      setKeyError("Enter your API key without spaces.");
+  const save = async () => {
+    const problem = await useAiStore.getState().saveKey("google", keyInput);
+    if (problem) {
+      setKeyError(problem);
       return;
     }
     setKeyError("");
@@ -50,19 +54,11 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
 
   const test = async () => {
     setStatus("Testing…");
-    const { apiKey: key, textModel: text, speechModel: speech } = useAiStore.getState();
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort("timeout"), 15000);
     try {
-      await testConnection(
-        { apiKey: key, textModel: text, speechModel: speech },
-        controller.signal,
-      );
+      await testConnection();
       setStatus("Connection works.");
     } catch (error) {
       setStatus(error instanceof AiError ? aiMessage(error.kind) : aiMessage("service"));
-    } finally {
-      window.clearTimeout(timer);
     }
   };
 
@@ -82,9 +78,9 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
         The word and the course language are sent to Google for text and audio. The word and the
-        sentence you choose are sent to Pollinations to create the picture. Your keys are stored on
-        this device only and are never shown in full. Use keys with spending limits and remove them
-        on shared computers.
+        sentence you choose are sent to Pollinations to create the picture. Your keys are stored
+        encrypted by your computer's protected storage, are only used by the app to call these services,
+        and are never shown again. Use keys with spending limits.
       </p>
       <p className="mt-2 text-body-medium">
         <a
@@ -115,9 +111,14 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           className={`${inputClasses} mt-1 ${keyError ? "border-error" : ""}`}
         />
         <p id="ai-key-help" className="mt-1 text-body-medium text-on-surface-variant">
-          {apiKey ? `Saved key: ${maskKey(apiKey)}` : "No key saved."}
+          {googleConnected ? `Saved key: ${maskKey(googleLast4)}` : "No key saved."}
         </p>
         {keyError && <p className="mt-1 text-body-medium text-error">{keyError}</p>}
+        {weakProtection && (
+          <p className="mt-1 text-body-medium text-error">
+            This computer has no secure key storage set up, so saved keys are only lightly protected.
+          </p>
+        )}
       </div>
 
       <p aria-live="polite" className="mt-3 min-h-6 text-body-medium text-on-surface">
@@ -125,13 +126,13 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
       </p>
 
       <div className="mt-2 flex flex-wrap gap-2">
-        <Button variant="filled" onClick={save}>
+        <Button variant="filled" onClick={() => void save()}>
           Save
         </Button>
-        <Button variant="tonal" disabled={!apiKey} onClick={() => void test()}>
+        <Button variant="tonal" disabled={!googleConnected} onClick={() => void test()}>
           Test connection
         </Button>
-        <Button variant="text" disabled={!apiKey} onClick={() => setConfirmingRemove(true)}>
+        <Button variant="text" disabled={!googleConnected} onClick={() => setConfirmingRemove(true)}>
           Remove key
         </Button>
       </div>
@@ -143,7 +144,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
             <Button
               variant="text"
               onClick={() => {
-                useAiStore.getState().removeKey();
+                void useAiStore.getState().removeKey("google");
                 setConfirmingRemove(false);
                 setStatus("Key removed.");
               }}
@@ -175,7 +176,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
         />
         <p id="pollinations-key-help" className="mt-1 text-body-medium text-on-surface-variant">
-          {pollinationsKey ? `Saved key: ${maskKey(pollinationsKey)}` : "No key saved."}
+          {pollinationsConnected ? `Saved key: ${maskKey(pollinationsLast4)}` : "No key saved."}
         </p>
         {pKeyError && <p className="mt-1 text-body-medium text-error">{pKeyError}</p>}
         <p aria-live="polite" className="mt-2 min-h-6 text-body-medium text-on-surface">
@@ -185,20 +186,25 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           <Button
             variant="filled"
             onClick={() => {
-              if (!useAiStore.getState().savePollinationsKey(pKeyInput)) {
-                setPKeyError("Enter your API key without spaces.");
-                return;
-              }
-              setPKeyError("");
-              setPKeyInput("");
-              setPStatus("Pollinations connected.");
+              void useAiStore
+                .getState()
+                .saveKey("pollinations", pKeyInput)
+                .then((problem) => {
+                  if (problem) {
+                    setPKeyError(problem);
+                    return;
+                  }
+                  setPKeyError("");
+                  setPKeyInput("");
+                  setPStatus("Pollinations connected.");
+                });
             }}
           >
             Save
           </Button>
           <Button
             variant="text"
-            disabled={!pollinationsKey}
+            disabled={!pollinationsConnected}
             onClick={() => setConfirmingRemovePollinations(true)}
           >
             Remove key
@@ -215,7 +221,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               <Button
                 variant="text"
                 onClick={() => {
-                  useAiStore.getState().removePollinationsKey();
+                  void useAiStore.getState().removeKey("pollinations");
                   setConfirmingRemovePollinations(false);
                   setPStatus("Key removed.");
                 }}
@@ -274,11 +280,10 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
             <Button
               variant="tonal"
               onClick={() =>
-                setModelsStatus(
-                  useAiStore.getState().setModels(textInput, speechInput, imageInput)
-                    ? "Models saved."
-                    : "Enter model names without spaces.",
-                )
+                void useAiStore
+                  .getState()
+                  .setModels(textInput, speechInput, imageInput)
+                  .then((problem) => setModelsStatus(problem ?? "Models saved."))
               }
             >
               Save models
@@ -286,13 +291,17 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
             <Button
               variant="text"
               onClick={() => {
-                useAiStore.getState().restoreModels();
-                const { textModel: text, speechModel: speech, pollinationsModel: image } =
-                  useAiStore.getState();
-                setTextInput(text);
-                setSpeechInput(speech);
-                setImageInput(image);
-                setModelsStatus("Defaults restored.");
+                void useAiStore
+                  .getState()
+                  .restoreModels()
+                  .then(() => {
+                    const { textModel: text, speechModel: speech, pollinationsModel: image } =
+                      useAiStore.getState();
+                    setTextInput(text);
+                    setSpeechInput(speech);
+                    setImageInput(image);
+                    setModelsStatus("Defaults restored.");
+                  });
               }}
             >
               Restore defaults

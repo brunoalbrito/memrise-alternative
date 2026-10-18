@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { isDesktop } from "../../../shared/api";
 import { IconButton } from "../../../shared/ui/IconButton";
 import { ArrowDropDownIcon, MoreVertIcon } from "../../../shared/ui/icons";
 import { Menu, type MenuItem } from "../../../shared/ui/Menu";
 import type { Course, GoalValue } from "../model/types";
+import { useHomeExtensions } from "../context/HomeExtensions";
 import { useLearnerStore } from "../store/learnerStore";
 import { GoalDialog } from "./GoalDialog";
+import { NewWordsDialog } from "./NewWordsDialog";
 import { RemoveCourseDialog } from "./RemoveCourseDialog";
 
 interface CourseOptionsMenuProps {
@@ -21,20 +24,27 @@ export function CourseOptionsMenu({
   triggerLabel,
   onRemoved,
 }: CourseOptionsMenuProps) {
-  const [dialog, setDialog] = useState<"goal" | "remove" | null>(null);
+  const [dialog, setDialog] = useState<"goal" | "remove" | "newwords" | null>(null);
   const setGoal = useLearnerStore((state) => state.setGoal);
+  const { exportCourse, exportAnki } = useHomeExtensions();
 
   const items: MenuItem[] = [
     { kind: "item", id: "set-goal", label: "Set daily goal" },
+    ...(isDesktop() ? [{ kind: "item", id: "new-words", label: "New words per day" } as MenuItem] : []),
     ...(goal !== undefined
       ? [{ kind: "item", id: "clear-goal", label: "Clear goal" } as MenuItem]
       : []),
+    ...(exportCourse ? [{ kind: "item", id: "export", label: "Export course" } as MenuItem] : []),
+    ...(exportAnki ? [{ kind: "item", id: "export-anki", label: "Export for Anki" } as MenuItem] : []),
     { kind: "item", id: "remove", label: "Remove course" },
   ];
 
   const onSelect = (id: string) => {
     if (id === "set-goal") setDialog("goal");
+    else if (id === "new-words") setDialog("newwords");
     else if (id === "clear-goal") setGoal(course.id, null);
+    else if (id === "export") exportCourse?.(course);
+    else if (id === "export-anki") exportAnki?.(course);
     else if (id === "remove") setDialog("remove");
   };
 
@@ -68,6 +78,9 @@ export function CourseOptionsMenu({
           courseTitle={course.title}
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog === "newwords" && (
+        <NewWordsDialog courseId={course.id} courseTitle={course.title} onClose={() => setDialog(null)} />
       )}
       {dialog === "remove" && (
         <RemoveCourseDialog

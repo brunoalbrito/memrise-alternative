@@ -1,3 +1,5 @@
+import { getApi, isDesktop } from "../api";
+
 const DB_NAME = "membetter-media";
 const STORE = "files";
 
@@ -34,7 +36,18 @@ async function run<T>(
   });
 }
 
+/** Address of a stored file in the desktop app (served by the main process). */
+export function mediaUrl(id: string): string {
+  return `membetter-media://media/${encodeURIComponent(id)}`;
+}
+
 export async function putMedia(id: string, blob: Blob): Promise<void> {
+  if (isDesktop()) {
+    const name = blob instanceof File ? blob.name : "file";
+    const result = await getApi().media.put(id, new Uint8Array(await blob.arrayBuffer()), name);
+    if (!result.ok) throw new Error(result.error.message);
+    return;
+  }
   await run("readwrite", (store) => store.put(blob, id));
 }
 
@@ -43,5 +56,9 @@ export async function getMedia(id: string): Promise<Blob | undefined> {
 }
 
 export async function deleteMedia(id: string): Promise<void> {
+  if (isDesktop()) {
+    await getApi().media.remove(id);
+    return;
+  }
   await run("readwrite", (store) => store.delete(id));
 }

@@ -16,6 +16,12 @@
   --md-outline: #79747e;
   --md-outline-variant: #cac4d0;
   --md-error: #b3261e;
+  --md-error-container: #f9dedc;
+  --md-on-error-container: #410e0b;
+  --md-tertiary-container: #ffd8e4;
+  --md-on-tertiary-container: #31111d;
+  --md-inverse-surface: #322f35;
+  --md-inverse-on-surface: #f5eff7;
   --md-scrim: rgb(0 0 0 / 0.32);
 }
 
@@ -37,6 +43,12 @@
     --md-outline: #938f99;
     --md-outline-variant: #49454f;
     --md-error: #f2b8b5;
+    --md-error-container: #8c1d18;
+    --md-on-error-container: #f9dedc;
+    --md-tertiary-container: #633b48;
+    --md-on-tertiary-container: #ffd8e4;
+    --md-inverse-surface: #e6e0e9;
+    --md-inverse-on-surface: #322f35;
   }
 }
 
@@ -57,6 +69,12 @@
   --color-outline: var(--md-outline);
   --color-outline-variant: var(--md-outline-variant);
   --color-error: var(--md-error);
+  --color-error-container: var(--md-error-container);
+  --color-on-error-container: var(--md-on-error-container);
+  --color-tertiary-container: var(--md-tertiary-container);
+  --color-on-tertiary-container: var(--md-on-tertiary-container);
+  --color-inverse-surface: var(--md-inverse-surface);
+  --color-inverse-on-surface: var(--md-inverse-on-surface);
   --color-scrim: var(--md-scrim);
 }
 

@@ -1,0 +1,37 @@
+appId: com.membetter.app
+productName: MemBetter
+copyright: Copyright © MemBetter
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+asar: true
+# Electron fuses (runAsNode, NODE_OPTIONS, onlyLoadAppFromAsar) should be turned off together with code signing: flipping them
+# invalidates an unsigned arm64 macOS binary, so the app would not start. See specs/025-desktop-release/tasks.md.
+# Native modules cannot be loaded from inside the asar archive.
+asarUnpack:
+  - "**/*.node"
+publish:
+  provider: github
+  owner: brunoalbrito
+  repo: memrise-alternative
+mac:
+  category: public.app-category.education
+  target: [dmg, zip]
+  hardenedRuntime: true
+  # Signing and notarization use CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID
+  # when they are set (see .github/workflows/release.yml); without them an unsigned build is produced.
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  target: [AppImage, deb]
+  category: Education
+fileAssociations:
+  - ext: membetter
+    name: MemBetter course
+    description: MemBetter course file
+    role: Editor

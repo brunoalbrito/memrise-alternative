@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { deleteMedia, putMedia } from "../../../shared/media/mediaStore";
 import { storageWritable } from "../../../shared/storage/storageWritable";
 import type { MediaRef } from "../../home";
-import { useMediaUrl } from "../hooks/useMediaUrl";
+import { useMediaUrl } from "../../../shared/media/useMediaUrl";
 import type { MediaKind } from "../model/levelOps";
 import { ACCEPT, validateMediaFile } from "../model/mediaRules";
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { allCategories, getCategoryById } from "../data/sampleCourses";
+import { allCategories, getCategoryById } from "../data/categories";
 import { applyFilter, availableCategories, visibleCourses } from "../model/selectors";
 import type { FilterValue } from "../model/types";
 import { useLearnerStore } from "../store/learnerStore";

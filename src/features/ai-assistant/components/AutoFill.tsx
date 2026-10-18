@@ -20,7 +20,7 @@ export function AutoFill({ word, languageName, onApply }: AutoFillProps) {
   const disabled = trimmed === "" || tooLong;
 
   const open = () => {
-    setDialog(useAiStore.getState().apiKey === "" ? "connect" : "suggest");
+    setDialog(!useAiStore.getState().googleConnected ? "connect" : "suggest");
   };
 
   return (

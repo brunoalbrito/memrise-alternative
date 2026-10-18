@@ -5,7 +5,7 @@ import { useAiStore } from "../store/aiStore";
 import { ConnectDialog } from "./ConnectDialog";
 
 export function AiSettingsButton() {
-  const connected = useAiStore((state) => state.apiKey !== "");
+  const connected = useAiStore((state) => state.googleConnected);
   const [open, setOpen] = useState(false);
 
   return (

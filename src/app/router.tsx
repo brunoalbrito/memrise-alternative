@@ -1,11 +1,17 @@
-import { Navigate, createBrowserRouter } from "react-router";
+import { Navigate, createBrowserRouter, createHashRouter } from "react-router";
+import { isDesktop } from "../shared/api";
 import { HomePage } from "../features/home";
 import { CourseDetailPage, LevelPlaceholder } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
 import { CourseEditorPage } from "../features/course-editor";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
+import { PracticePage } from "../features/practice";
+import { PrivacyPage } from "../features/privacy";
 
-export const router = createBrowserRouter([
+// The desktop app is loaded from a file, where only hash URLs survive a reload.
+const createRouter = isDesktop() ? createHashRouter : createBrowserRouter;
+
+export const router = createRouter([
   { path: "/", element: <HomePage /> },
   { path: "/courses", element: <ComingSoonPage title="Courses" /> },
   { path: "/courses/new", element: <CreateCoursePage /> },
@@ -15,28 +21,25 @@ export const router = createBrowserRouter([
   },
   { path: "/groups", element: <ComingSoonPage title="Groups" /> },
   { path: "/profile", element: <ComingSoonPage title="Profile" /> },
+  { path: "/privacy", element: <PrivacyPage /> },
   { path: "/course/:id", element: <CourseDetailPage /> },
   {
     path: "/course/:id/review",
-    element: <CoursePlaceholder title="Classic review" />,
+    element: <PracticePage kind="classic" />,
   },
   {
     path: "/course/:id/speed-review",
-    element: <CoursePlaceholder title="Speed review" />,
+    element: <PracticePage kind="speed" />,
   },
   {
     path: "/course/:id/learn",
-    element: <CoursePlaceholder title="Learn new words" />,
+    element: <PracticePage kind="learn" />,
   },
   { path: "/course/:id/share", element: <CoursePlaceholder title="Tweet" /> },
   { path: "/course/:id/edit", element: <CourseEditorPage tab="levels" /> },
   { path: "/course/:id/edit/details", element: <CourseEditorPage tab="details" /> },
   { path: "/course/:id/edit/databases", element: <CourseEditorPage tab="databases" /> },
   { path: "/course/:id/edit/contributors", element: <CourseEditorPage tab="contributors" /> },
-  {
-    path: "/course/:id/leaderboard",
-    element: <CoursePlaceholder title="Leaderboard" />,
-  },
   { path: "/course/:id/levels/:level", element: <LevelPlaceholder /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

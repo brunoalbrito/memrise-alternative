@@ -1,16 +1,18 @@
+import { Link, useNavigate } from "react-router";
 import { CreateCourseButton } from "./components/CreateCourseButton";
 import { EmptyState } from "./components/EmptyState";
 import { CourseCard } from "./components/CourseCard";
 import { FilterMenu } from "./components/FilterMenu";
 import { HomeErrorBoundary } from "./components/HomeErrorBoundary";
 import { TopAppBar } from "./components/TopAppBar";
+import { useHomeExtensions } from "./context/HomeExtensions";
 import { useFilteredCourses } from "./hooks/useFilteredCourses";
-import { useLearnerStore } from "./store/learnerStore";
 
 export function HomePage() {
   const { hasCourses, courses, categories, filter, filterName, setFilter, goals } =
     useFilteredCourses();
-  const restoreCourses = useLearnerStore((state) => state.restoreCourses);
+  const { toolbar } = useHomeExtensions();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-surface">
@@ -25,16 +27,17 @@ export function HomePage() {
               onChange={setFilter}
             />
           )}
-          <div className="ml-auto">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {toolbar}
             <CreateCourseButton />
           </div>
         </div>
         <HomeErrorBoundary>
           {!hasCourses ? (
             <EmptyState
-              message="You have no courses"
-              actionLabel="Restore sample courses"
-              onAction={restoreCourses}
+              message="You have no courses yet. Create one, or import a course file or a word list."
+              actionLabel="Create a course"
+              onAction={() => navigate("/courses/new")}
             />
           ) : courses.length === 0 ? (
             <EmptyState
@@ -52,6 +55,11 @@ export function HomePage() {
             </ul>
           )}
         </HomeErrorBoundary>
+        <p className="mt-10 text-center text-body-medium text-on-surface-variant">
+          <Link to="/privacy" className="underline">
+            Privacy: what is stored and what is sent
+          </Link>
+        </p>
       </main>
     </div>
   );

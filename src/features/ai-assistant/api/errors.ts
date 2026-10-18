@@ -10,7 +10,8 @@ export type AiErrorKind =
   | "image"
   | "image-no-key"
   | "image-key"
-  | "image-credit";
+  | "image-credit"
+  | "no-key";
 
 /** Never put the API key or raw response bodies in the message. */
 export class AiError extends Error {
@@ -49,5 +50,7 @@ export function aiMessage(kind: AiErrorKind): string {
       return "Pollinations did not accept your key. Check it in AI settings.";
     case "image-credit":
       return "Your Pollinations balance or budget is used up.";
+    case "no-key":
+      return "Add your Google AI Studio key in AI settings.";
   }
 }
