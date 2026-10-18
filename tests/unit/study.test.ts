@@ -203,6 +203,19 @@ describe("progress and statistics", () => {
     expect(study.stats("c")).toMatchObject({ learned: 2, longTerm: 1, ignored: 0, totalReviews: 3, recallPercent: 67 });
   });
 
+  it("marks many words at once, including words never practiced, and reports lapses", () => {
+    answerAll("learn", ["w1"]);
+    study.markMany({ courseId: "c", wordIds: ["w1", "w2", "w3"], flag: "ignored", value: true });
+    const p = study.progress().cards;
+    expect(["w1", "w2", "w3"].map((id) => p[id]?.ignored)).toEqual([true, true, true]);
+    expect(p["w1"]).toMatchObject({ learned: true, lapses: 0 });
+    expect(p["w2"]).toMatchObject({ learned: false, dueAt: "" });
+    study.markMany({ courseId: "c", wordIds: ["w1", "w2"], flag: "ignored", value: false });
+    expect(study.progress().cards["w2"]!.ignored).toBe(false);
+    expect(study.progress().cards["w3"]!.ignored).toBe(true);
+    expect(study.plan({ courseId: "c", kind: "learn", wordIds: ["w2", "w3"] }).wordIds).toEqual(["w2"]);
+  });
+
   it("a new word marked ignored stays new and is excluded from learn", () => {
     study.mark({ courseId: "c", wordId: "w1", flag: "ignored", value: true });
     expect(study.progress().cards["w1"]).toMatchObject({ learned: false, ignored: true, dueAt: "" });

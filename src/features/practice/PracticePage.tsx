@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { getApi, isDesktop } from "../../shared/api";
 import { Button } from "../../shared/ui/Button";
 import { IconButton } from "../../shared/ui/IconButton";
@@ -37,10 +37,12 @@ const formatDue = (iso: string): string =>
   new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
 
 /** Chooses the words of a session: new words to learn, or words that are due (desktop), in the order of the course. */
-function usePlanned(courseId: string, kind: PracticeKind, round: number): Planned | null {
-  const levels = useCourseLevels(courseId);
+function usePlanned(courseId: string, kind: PracticeKind, round: number, levelId: string | null): Planned | null {
+  const allLevels = useCourseLevels(courseId);
+  // A session can be limited to one level (from the level page).
+  const levels = useMemo(() => (levelId ? allLevels.filter((level) => level.id === levelId) : allLevels), [allLevels, levelId]);
   const [result, setResult] = useState<{ key: string; planned: Planned } | null>(null);
-  const key = `${courseId}:${kind}:${round}`;
+  const key = `${courseId}:${kind}:${levelId ?? ""}:${round}`;
   const candidates = useMemo(() => {
     const all = levels.flatMap((level) => level.words).filter(wordHasText);
     return { usable: all.filter(hasPrompt), skipped: all.length - all.filter(hasPrompt).length };
@@ -91,7 +93,11 @@ export function PracticePage({ kind }: { kind: PracticeKind }) {
   const { id = "" } = useParams();
   const course = useCourse(id);
   const [round, setRound] = useState(0);
-  const planned = usePlanned(id, kind, round);
+  const [search] = useSearchParams();
+  const levelId = search.get("level");
+  const planned = usePlanned(id, kind, round, levelId);
+  const levelIndex = useCourseLevels(id).findIndex((level) => level.id === levelId);
+  const backPath = levelId && levelIndex >= 0 ? `/course/${id}/levels/${levelIndex + 1}` : `/course/${id}`;
 
   if (!course) {
     return (
@@ -113,7 +119,8 @@ export function PracticePage({ kind }: { kind: PracticeKind }) {
   // A new key restarts the session ("Practice again" plans it again).
   return (
     <Session
-      key={`${id}:${kind}:${round}`}
+      backPath={backPath}
+      key={`${id}:${kind}:${levelId ?? ""}:${round}`}
       courseId={id}
       title={course.title}
       kind={kind}
@@ -128,6 +135,8 @@ export function PracticePage({ kind }: { kind: PracticeKind }) {
 
 interface SessionProps {
   courseId: string;
+  /** Where leaving the session goes: the course, or the level it was started from. */
+  backPath: string;
   title: string;
   kind: PracticeKind;
   planned: Planned;
@@ -135,7 +144,7 @@ interface SessionProps {
   onAgain: () => void;
 }
 
-function Session({ courseId, title, kind, planned, languageId, onAgain }: SessionProps) {
+function Session({ courseId, backPath, title, kind, planned, languageId, onAgain }: SessionProps) {
   const navigate = useNavigate();
   const s = usePracticeSession(courseId, kind, planned.words, planned.skipped);
   const [showShortcuts, setShowShortcuts] = useState(readShortcuts);
@@ -224,7 +233,7 @@ function Session({ courseId, title, kind, planned, languageId, onAgain }: Sessio
       <IconButton aria-label="Show keyboard shortcuts" aria-pressed={showShortcuts} onClick={toggleShortcuts}>
         <KeyboardIcon />
       </IconButton>
-      <IconButton aria-label="Close" onClick={() => (s.finished ? navigate(`/course/${courseId}`) : setExiting(true))}>
+      <IconButton aria-label="Close" onClick={() => (s.finished ? navigate(backPath) : setExiting(true))}>
         <CloseIcon />
       </IconButton>
     </header>
@@ -234,7 +243,7 @@ function Session({ courseId, title, kind, planned, languageId, onAgain }: Sessio
     return (
       <div className="min-h-screen bg-surface">
         {header}
-        <SessionSummary courseId={courseId} title={title} totals={s.totals} onAgain={onAgain} />
+        <SessionSummary backPath={backPath} title={title} totals={s.totals} onAgain={onAgain} />
       </div>
     );
   }
@@ -256,7 +265,7 @@ function Session({ courseId, title, kind, planned, languageId, onAgain }: Sessio
             <>
               <h1 className="text-headline-medium text-on-surface">{kind === "learn" ? "No new words for now" : "All caught up"}</h1>
               <p className="text-body-large text-on-surface-variant">{planned.empty}</p>
-              <Link to={`/course/${courseId}`} className="text-label-large font-medium text-primary underline">
+              <Link to={backPath} className="text-label-large font-medium text-primary underline">
                 Back to the course
               </Link>
             </>
@@ -388,7 +397,7 @@ function Session({ courseId, title, kind, planned, languageId, onAgain }: Sessio
           onContinue={() => setExiting(false)}
           onEnd={() => {
             s.exit();
-            navigate(`/course/${courseId}`);
+            navigate(backPath);
           }}
         />
       )}

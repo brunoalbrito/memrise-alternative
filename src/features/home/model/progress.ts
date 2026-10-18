@@ -3,6 +3,8 @@ import type { CourseLevel } from "./types";
 /** What the app knows about a practiced word (see `study.progress` in the desktop API). */
 export interface WordProgress {
   learned: boolean;
+  /** Mistakes made after the word was learned. */
+  lapses: number;
   /** Empty until the word has been answered. */
   dueAt: string;
   ignored: boolean;

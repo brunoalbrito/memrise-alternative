@@ -15,7 +15,7 @@ import { AiService } from "../services/ai/service";
 import { Secrets } from "../services/secrets";
 import { Settings } from "../services/settings";
 import { osCipher, shrinkImage } from "./secureStorage";
-import { CourseIdSchema, EndSessionSchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, Study, StartSessionSchema } from "../services/study";
+import { CourseIdSchema, EndSessionSchema, MarkManySchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, Study, StartSessionSchema } from "../services/study";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemSchema, ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
@@ -184,6 +184,10 @@ function registerIpc(): void {
   handle("study:stats", CourseIdSchema, ({ courseId }) => study!.stats(courseId));
   handle("study:mark", MarkSchema, (input) => {
     study!.mark(input);
+    return null;
+  });
+  handle("study:markMany", MarkManySchema, (input) => {
+    study!.markMany(input);
     return null;
   });
   handle("study:setNewPerDay", NewPerDaySchema, ({ courseId, value }) => {

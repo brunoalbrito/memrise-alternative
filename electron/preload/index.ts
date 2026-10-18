@@ -48,6 +48,7 @@ const api: MembetterApi = {
     progress: () => ipcRenderer.invoke("study:progress"),
     stats: (courseId) => ipcRenderer.invoke("study:stats", { courseId }),
     mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
+    markMany: (courseId, wordIds, flag, value) => ipcRenderer.invoke("study:markMany", { courseId, wordIds, flag, value }),
     setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
   },
   anki: {

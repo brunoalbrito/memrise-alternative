@@ -56,6 +56,8 @@ export interface StudyPlan {
 
 export interface CardProgress {
   learned: boolean;
+  /** Mistakes made after the word was learned. */
+  lapses: number;
   /** Empty for a word that has not been answered yet. */
   dueAt: string;
   ignored: boolean;
@@ -180,6 +182,8 @@ export interface MembetterApi {
     progress(): Promise<Result<StudyProgress>>;
     stats(courseId: string): Promise<Result<CourseStats>>;
     mark(courseId: string, wordId: string, flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
+    /** Sets the flag for many words at once. */
+    markMany(courseId: string, wordIds: string[], flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
     setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
   };
   anki: {
