@@ -1,6 +1,5 @@
 import { audioBlobFromBase64 } from "./audio";
 import { AiError } from "./errors";
-import { imageBlobFromBase64, shrinkImage } from "./image";
 import { parseWordText, type WordText } from "../model/suggestion";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/interactions";
@@ -10,7 +9,6 @@ export interface AiSettings {
   apiKey: string;
   textModel: string;
   speechModel: string;
-  imageModel: string;
 }
 
 type Json = Record<string, unknown>;
@@ -88,43 +86,6 @@ export function extractAudio(json: Json): string {
     if (inline && typeof inline.data === "string") return inline.data;
   }
   return "";
-}
-
-export function extractImage(json: Json): { data: string; mimeType?: string } {
-  const direct = json.output_image as Json | undefined;
-  if (direct && typeof direct.data === "string") {
-    return {
-      data: direct.data,
-      mimeType: typeof direct.mime_type === "string" ? direct.mime_type : undefined,
-    };
-  }
-  const isImage = (mime: unknown) =>
-    mime === undefined || (typeof mime === "string" && mime.startsWith("image/"));
-  const item = contentItems(json).find(
-    (entry) => typeof entry.data === "string" && isImage(entry.mime_type),
-  );
-  if (item) {
-    return {
-      data: item.data as string,
-      mimeType: typeof item.mime_type === "string" ? item.mime_type : undefined,
-    };
-  }
-  for (const part of legacyParts(json)) {
-    const inline = part.inlineData as Json | undefined;
-    if (inline && typeof inline.data === "string" && typeof inline.mimeType === "string" && inline.mimeType.startsWith("image/")) {
-      return { data: inline.data, mimeType: inline.mimeType };
-    }
-  }
-  return { data: "" };
-}
-
-export function buildImagePrompt(word: string, sentence: string): string {
-  return [
-    `Draw a simple, friendly, colourful illustration of the scene described by this sentence: ${JSON.stringify(sentence)}.`,
-    `Show what the sentence says: the people, objects, action and setting it mentions, so that the meaning of the word ${JSON.stringify(word)} is clearly visible in the scene.`,
-    "If the sentence is abstract, show a simple everyday scene that conveys it.",
-    "Square composition, flat illustration style. Do not include any text, letters, numbers, captions, speech bubbles or watermarks.",
-  ].join("\n");
 }
 
 export function buildTextPrompt(word: string, languageName: string): string {
@@ -212,40 +173,6 @@ export async function generateWordAudio(
   const data = extractAudio(json);
   if (data === "") throw new AiError("audio");
   return audioBlobFromBase64(data);
-}
-
-export async function generateWordImage(
-  word: string,
-  sentence: string,
-  settings: AiSettings,
-  signal: AbortSignal,
-): Promise<Blob> {
-  let json: Json;
-  try {
-    json = await post(
-      {
-        model: settings.imageModel,
-        input: [{ type: "text", text: buildImagePrompt(word, sentence) }],
-        response_format: {
-          type: "image",
-          mime_type: "image/jpeg",
-          aspect_ratio: "1:1",
-          image_size: "1K",
-        },
-      },
-      settings,
-      signal,
-    );
-  } catch (error) {
-    if (error instanceof AiError && error.kind !== "service" && error.kind !== "unusable") {
-      throw error;
-    }
-    if (error instanceof AiError) throw new AiError("image");
-    throw error;
-  }
-  const { data, mimeType } = extractImage(json);
-  if (data === "") throw new AiError("image");
-  return shrinkImage(imageBlobFromBase64(data, mimeType));
 }
 
 /** Any non-error response counts as working. */

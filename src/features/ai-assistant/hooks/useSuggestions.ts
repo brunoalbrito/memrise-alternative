@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AiError, type AiErrorKind } from "../api/errors";
-import { generateWordAudio, generateWordImage, generateWordText } from "../api/gemini";
+import { generateWordAudio, generateWordText } from "../api/gemini";
+import { generateWordImage } from "../api/pollinations";
 import type { WordSuggestion } from "../model/suggestion";
 import { useAiStore } from "../store/aiStore";
 
@@ -42,13 +43,19 @@ export function useSuggestions(word: string, languageName: string) {
     imageControllerRef.current = controller;
     const runId = imageRunRef.current;
     const timer = window.setTimeout(() => controller.abort("timeout"), IMAGE_TIMEOUT_MS);
-    const { apiKey, textModel, speechModel, imageModel } = useAiStore.getState();
+    const { pollinationsKey, pollinationsModel } = useAiStore.getState();
+    if (pollinationsKey === "") {
+      window.clearTimeout(timer);
+      setImage({ status: "error", kind: "image-no-key" });
+      return;
+    }
     setImage({ status: "loading", index });
     try {
       const blob = await generateWordImage(
         word.trim(),
         sentence,
-        { apiKey, textModel, speechModel, imageModel },
+        pollinationsKey,
+        pollinationsModel,
         controller.signal,
       );
       if (runId !== imageRunRef.current) return;
@@ -72,8 +79,8 @@ export function useSuggestions(word: string, languageName: string) {
     controllerRef.current = controller;
     const runId = (runIdRef.current += 1);
     const timer = window.setTimeout(() => controller.abort("timeout"), TIMEOUT_MS);
-    const { apiKey, textModel, speechModel, imageModel } = useAiStore.getState();
-    const settings = { apiKey, textModel, speechModel, imageModel };
+    const { apiKey, textModel, speechModel } = useAiStore.getState();
+    const settings = { apiKey, textModel, speechModel };
     const trimmed = word.trim();
 
     const audioPromise = generateWordAudio(trimmed, settings, controller.signal).then(

@@ -1,3 +1,6 @@
+> **Superseded by `specs/013-pollinations-images`**: pictures are now created by Pollinations, not Google. This
+> contract is kept for history.
+
 # Contract: Gemini image request
 
 Same endpoint, headers and key rules as `specs/010-ai-word-assistant/contracts/gemini-api.md`.

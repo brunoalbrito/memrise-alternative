@@ -17,14 +17,19 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const apiKey = useAiStore((state) => state.apiKey);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
-  const imageModel = useAiStore((state) => state.imageModel);
+  const pollinationsKey = useAiStore((state) => state.pollinationsKey);
+  const pollinationsModel = useAiStore((state) => state.pollinationsModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
-  const [imageInput, setImageInput] = useState(imageModel);
+  const [imageInput, setImageInput] = useState(pollinationsModel);
+  const [pKeyInput, setPKeyInput] = useState("");
+  const [pKeyError, setPKeyError] = useState("");
+  const [pStatus, setPStatus] = useState("");
+  const [confirmingRemovePollinations, setConfirmingRemovePollinations] = useState(false);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -45,12 +50,12 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
 
   const test = async () => {
     setStatus("Testing…");
-    const { apiKey: key, textModel: text, speechModel: speech, imageModel: image } = useAiStore.getState();
+    const { apiKey: key, textModel: text, speechModel: speech } = useAiStore.getState();
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort("timeout"), 15000);
     try {
       await testConnection(
-        { apiKey: key, textModel: text, speechModel: speech, imageModel: image },
+        { apiKey: key, textModel: text, speechModel: speech },
         controller.signal,
       );
       setStatus("Connection works.");
@@ -76,8 +81,10 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         for a word.
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
-        The word, the sentence you choose and the course language are sent to Google. Your key is
-        stored on this device only and is never shown in full. Remove it on shared computers.
+        The word and the course language are sent to Google for text and audio. The word and the
+        sentence you choose are sent to Pollinations to create the picture. Your keys are stored on
+        this device only and are never shown in full. Use keys with spending limits and remove them
+        on shared computers.
       </p>
       <p className="mt-2 text-body-medium">
         <a
@@ -150,6 +157,79 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         </div>
       )}
 
+      <div className="mt-6 border-t border-outline-variant pt-4">
+        <label htmlFor="pollinations-key" className="text-label-large font-medium">
+          Pollinations API key (for images)
+        </label>
+        <input
+          id="pollinations-key"
+          type="password"
+          autoComplete="off"
+          value={pKeyInput}
+          onChange={(event) => {
+            setPKeyInput(event.target.value);
+            setPKeyError("");
+          }}
+          aria-invalid={pKeyError ? true : undefined}
+          aria-describedby="pollinations-key-help"
+          className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
+        />
+        <p id="pollinations-key-help" className="mt-1 text-body-medium text-on-surface-variant">
+          {pollinationsKey ? `Saved key: ${maskKey(pollinationsKey)}` : "No key saved."}
+        </p>
+        {pKeyError && <p className="mt-1 text-body-medium text-error">{pKeyError}</p>}
+        <p aria-live="polite" className="mt-2 min-h-6 text-body-medium text-on-surface">
+          {pStatus}
+        </p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <Button
+            variant="filled"
+            onClick={() => {
+              if (!useAiStore.getState().savePollinationsKey(pKeyInput)) {
+                setPKeyError("Enter your API key without spaces.");
+                return;
+              }
+              setPKeyError("");
+              setPKeyInput("");
+              setPStatus("Pollinations connected.");
+            }}
+          >
+            Save
+          </Button>
+          <Button
+            variant="text"
+            disabled={!pollinationsKey}
+            onClick={() => setConfirmingRemovePollinations(true)}
+          >
+            Remove key
+          </Button>
+        </div>
+        {confirmingRemovePollinations && (
+          <div
+            className="mt-3 rounded-m3-md bg-surface-container p-3"
+            role="group"
+            aria-label="Remove Pollinations key"
+          >
+            <p className="text-body-medium">Remove the key from this device?</p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                variant="text"
+                onClick={() => {
+                  useAiStore.getState().removePollinationsKey();
+                  setConfirmingRemovePollinations(false);
+                  setPStatus("Key removed.");
+                }}
+              >
+                Remove
+              </Button>
+              <Button variant="text" onClick={() => setConfirmingRemovePollinations(false)}>
+                Keep
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <details className="mt-4">
         <summary className="cursor-pointer text-label-large font-medium">Models</summary>
         <div className="mt-3 flex flex-col gap-3">
@@ -177,11 +257,12 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           </div>
           <div>
             <label htmlFor="ai-image-model" className="text-label-large font-medium">
-              Image model
+              Image model (Pollinations, optional)
             </label>
             <input
               id="ai-image-model"
               value={imageInput}
+              placeholder="Provider default"
               onChange={(event) => setImageInput(event.target.value)}
               className={`${inputClasses} mt-1`}
             />
@@ -206,7 +287,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               variant="text"
               onClick={() => {
                 useAiStore.getState().restoreModels();
-                const { textModel: text, speechModel: speech, imageModel: image } =
+                const { textModel: text, speechModel: speech, pollinationsModel: image } =
                   useAiStore.getState();
                 setTextInput(text);
                 setSpeechInput(speech);

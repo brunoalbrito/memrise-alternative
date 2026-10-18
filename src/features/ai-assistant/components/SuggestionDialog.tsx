@@ -199,9 +199,21 @@ export function SuggestionDialog({
                 <p aria-live="assertive" role="alert" className="text-body-medium text-error">
                   {aiMessage(image.kind)}
                 </p>
-                <Button variant="text" onClick={newImage}>
-                  New image
-                </Button>
+                {image.kind === "image-no-key" || image.kind === "image-key" ? (
+                  <Button
+                    variant="tonal"
+                    onClick={() => {
+                      close();
+                      onOpenSettings();
+                    }}
+                  >
+                    Open AI settings
+                  </Button>
+                ) : (
+                  <Button variant="text" onClick={newImage}>
+                    New image
+                  </Button>
+                )}
               </div>
             )}
           </section>

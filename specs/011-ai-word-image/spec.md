@@ -107,7 +107,7 @@ If the picture cannot be created (usage limit, no connection, timeout, the servi
 ## Assumptions
 
 - This feature extends the AI Word Assistant, which provides the key, the suggestions panel and Apply.
-- Pictures are created with Google's image generation through the learner's own Google AI Studio key, like the text and audio.
+- Pictures were first created with Google's image generation through the learner's own Google AI Studio key. **Superseded by `specs/013-pollinations-images`**: pictures now come from Pollinations with the learner's Pollinations key.
 - A picture is a square illustration, reduced to at most 768 px on its longest side and saved as JPEG.
 - The picture starts being created automatically for the selected sentence because the Best sentence is selected by default; the learner can still select another one.
 - Free-tier limits may apply to image creation and are reported through the existing "usage limit" message.

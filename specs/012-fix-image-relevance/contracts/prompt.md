@@ -7,7 +7,8 @@ If the sentence is abstract, show a simple everyday scene that conveys it.
 Square composition, flat illustration style. Do not include any text, letters, numbers, captions, speech bubbles or watermarks.
 ```
 
-The request body, endpoint, headers, response extraction and error mapping are unchanged.
+The prompt is unchanged, but since `specs/013-pollinations-images` the request goes to Pollinations (see that
+feature's `contracts/pollinations-api.md`) instead of Google.
 
 ## UI
 

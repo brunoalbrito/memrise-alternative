@@ -4,19 +4,6 @@ const MAX_SIDE = 768;
 const SOFT_LIMIT = 1572864; // 1.5 MB
 const HARD_LIMIT = 2097152; // 2 MB
 
-export function imageBlobFromBase64(base64: string, mimeType?: string): Blob {
-  let bytes: Uint8Array;
-  try {
-    const binary = atob(base64);
-    bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  } catch {
-    throw new AiError("image");
-  }
-  if (bytes.length === 0) throw new AiError("image");
-  return new Blob([bytes as BlobPart], { type: mimeType || "image/jpeg" });
-}
-
 async function toJpeg(
   canvas: HTMLCanvasElement | OffscreenCanvas,
   quality: number,

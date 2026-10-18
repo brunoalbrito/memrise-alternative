@@ -7,7 +7,10 @@ export type AiErrorKind =
   | "unusable"
   | "service"
   | "audio"
-  | "image";
+  | "image"
+  | "image-no-key"
+  | "image-key"
+  | "image-credit";
 
 /** Never put the API key or raw response bodies in the message. */
 export class AiError extends Error {
@@ -40,5 +43,11 @@ export function aiMessage(kind: AiErrorKind): string {
       return "Audio could not be created.";
     case "image":
       return "Image could not be created.";
+    case "image-no-key":
+      return "Add your Pollinations key in AI settings to create images.";
+    case "image-key":
+      return "Pollinations did not accept your key. Check it in AI settings.";
+    case "image-credit":
+      return "Your Pollinations balance or budget is used up.";
   }
 }
