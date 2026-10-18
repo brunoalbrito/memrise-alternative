@@ -55,7 +55,7 @@ export function CourseCard({ course, goal }: CourseCardProps) {
             </span>
           </div>
         </div>
-        <div className="relative z-10">
+        <div className="relative">
           <CourseOptionsMenu course={course} goal={goal} />
         </div>
       </div>
@@ -64,7 +64,7 @@ export function CourseCard({ course, goal }: CourseCardProps) {
         <ProgressBar value={percent} label={`${course.title} progress`} />
       </div>
 
-      <div className="pointer-events-none relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="pointer-events-none relative mt-4 flex flex-wrap items-center justify-between gap-3">
         <CourseStats course={course} goal={goal} />
         <div className="pointer-events-auto flex items-center gap-2">
           <Button
