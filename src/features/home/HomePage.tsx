@@ -4,12 +4,14 @@ import { CourseCard } from "./components/CourseCard";
 import { FilterMenu } from "./components/FilterMenu";
 import { HomeErrorBoundary } from "./components/HomeErrorBoundary";
 import { TopAppBar } from "./components/TopAppBar";
+import { useHomeExtensions } from "./context/HomeExtensions";
 import { useFilteredCourses } from "./hooks/useFilteredCourses";
 import { useLearnerStore } from "./store/learnerStore";
 
 export function HomePage() {
   const { hasCourses, courses, categories, filter, filterName, setFilter, goals } =
     useFilteredCourses();
+  const { toolbar } = useHomeExtensions();
   const restoreCourses = useLearnerStore((state) => state.restoreCourses);
 
   return (
@@ -25,7 +27,8 @@ export function HomePage() {
               onChange={setFilter}
             />
           )}
-          <div className="ml-auto">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {toolbar}
             <CreateCourseButton />
           </div>
         </div>

@@ -14,3 +14,8 @@ win:
 linux:
   target: [AppImage, deb]
   category: Education
+fileAssociations:
+  - ext: membetter
+    name: MemBetter course
+    description: MemBetter course file
+    role: Editor

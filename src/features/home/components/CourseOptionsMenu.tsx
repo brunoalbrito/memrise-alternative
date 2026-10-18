@@ -3,6 +3,7 @@ import { IconButton } from "../../../shared/ui/IconButton";
 import { ArrowDropDownIcon, MoreVertIcon } from "../../../shared/ui/icons";
 import { Menu, type MenuItem } from "../../../shared/ui/Menu";
 import type { Course, GoalValue } from "../model/types";
+import { useHomeExtensions } from "../context/HomeExtensions";
 import { useLearnerStore } from "../store/learnerStore";
 import { GoalDialog } from "./GoalDialog";
 import { RemoveCourseDialog } from "./RemoveCourseDialog";
@@ -23,18 +24,21 @@ export function CourseOptionsMenu({
 }: CourseOptionsMenuProps) {
   const [dialog, setDialog] = useState<"goal" | "remove" | null>(null);
   const setGoal = useLearnerStore((state) => state.setGoal);
+  const { exportCourse } = useHomeExtensions();
 
   const items: MenuItem[] = [
     { kind: "item", id: "set-goal", label: "Set daily goal" },
     ...(goal !== undefined
       ? [{ kind: "item", id: "clear-goal", label: "Clear goal" } as MenuItem]
       : []),
+    ...(exportCourse ? [{ kind: "item", id: "export", label: "Export course" } as MenuItem] : []),
     { kind: "item", id: "remove", label: "Remove course" },
   ];
 
   const onSelect = (id: string) => {
     if (id === "set-goal") setDialog("goal");
     else if (id === "clear-goal") setGoal(course.id, null);
+    else if (id === "export") exportCourse?.(course);
     else if (id === "remove") setDialog("remove");
   };
 

@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { RouterProvider } from "react-router/dom";
-import { useLearnerStore } from "../features/home";
+import { HomeExtensionsProvider, useLearnerStore } from "../features/home";
+import { LibraryHost, LibraryToolbar, useExchangeStore } from "../features/library";
+import { isDesktop } from "../shared/api";
 import { router } from "./router";
 
 export function App() {
@@ -32,5 +34,17 @@ export function App() {
       </main>
     );
   }
-  return <RouterProvider router={router} />;
+  return (
+    <HomeExtensionsProvider
+      value={{
+        toolbar: <LibraryToolbar />,
+        exportCourse: isDesktop()
+          ? (course) => void useExchangeStore.getState().exportCourse(course)
+          : undefined,
+      }}
+    >
+      <RouterProvider router={router} />
+      {isDesktop() && <LibraryHost />}
+    </HomeExtensionsProvider>
+  );
 }

@@ -83,3 +83,42 @@ export interface LibrarySnapshot {
   goals: Record<string, 5 | 10 | 20 | 50>;
   removedCourseIds: string[];
 }
+
+/** One course as exported: the course fields plus its levels and words. */
+export const ExportItemSchema = z.object({
+  course: CourseSchema,
+  levels: z.array(CourseLevelSchema).max(500),
+});
+export type ExportItem = z.infer<typeof ExportItemSchema>;
+export const ExportItemsSchema = z.object({ items: z.array(ExportItemSchema).min(1).max(1000) });
+
+export const ImportChoiceSchema = z.object({
+  token: z.string().min(1).max(100),
+  choice: z.enum(["replace", "copy", "cancel"]),
+});
+export type ImportChoice = z.infer<typeof ImportChoiceSchema>["choice"];
+
+export interface ImportPreviewCourse {
+  title: string;
+  levels: number;
+  words: number;
+  media: number;
+  /** A course with the same id already exists in the library. */
+  conflict: boolean;
+}
+export interface ImportPreview {
+  token: string;
+  kind: "course" | "library";
+  courses: ImportPreviewCourse[];
+  /** Media referenced by the file that it did not include. */
+  missingMedia: number;
+}
+export interface ExportOutcome {
+  saved: boolean;
+  path?: string;
+  courses: number;
+  missingMedia: number;
+}
+export interface ImportOutcome {
+  imported: number;
+}

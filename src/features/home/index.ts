@@ -1,6 +1,8 @@
 export { HomePage } from "./HomePage";
+export { sampleCourses } from "./data/sampleCourses";
+export { sampleLevels } from "./data/sampleLevels";
 export { TopAppBar } from "./components/TopAppBar";
-export { useCourse } from "./hooks/useAllCourses";
+export { getVisibleCourses, useCourse } from "./hooks/useAllCourses";
 export { getCourseLevels, useCourseLevels } from "./hooks/useCourseLevels";
 export { countsFromLevels, wordHasText } from "./model/counts";
 export { useLearnerStore, CourseNotFoundError } from "./store/learnerStore";
@@ -20,3 +22,5 @@ export type {
   MediaRef,
   Word,
 } from "./model/types";
+export { HomeExtensionsProvider, useHomeExtensions } from "./context/HomeExtensions";
+export type { HomeExtensions } from "./context/HomeExtensions";
