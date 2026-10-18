@@ -27,6 +27,71 @@ React + Vite + TypeScript renderer inside an Electron shell. Data lives in a loc
 | `pnpm test:packaged` | Smoke test of the unpacked macOS arm64 app from `pnpm package:dir` |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript |
 
+## Testing
+
+Run these from the project folder after `pnpm install`.
+
+**Automated checks**
+
+```sh
+pnpm typecheck     # TypeScript
+pnpm lint          # ESLint
+pnpm test          # unit and integration tests (fast, no window)
+pnpm test:e2e      # builds the app, then drives the real app with Playwright (opens and closes windows by itself)
+```
+
+Run `pnpm test:e2e` with nothing else using the keyboard: some tests type into the app window. Every test uses a temporary data
+folder, so none of them touches your own courses.
+
+To run one test file: `pnpm exec vitest run tests/unit/study.test.ts` or `pnpm exec playwright test tests/e2e/practice.spec.ts`.
+
+**By hand**
+
+1. Run `pnpm dev:reset`, then `pnpm dev`. The app opens with an empty library ("You have no courses yet").
+2. Create a course, add levels and words (a picture, meaning or example is needed to practice a word), then use the grid button on the
+   course card to start **Learn new words**.
+3. Try the other features from Home: **Import**, **Export all**, **Import word list**, **Backups**, and the course menu
+   (**Export course**, **Export for Anki**, **New words per day**).
+
+## Testing with sample courses
+
+The app contains no sample data. A script writes a library file with seven sample courses that you import like any other file:
+
+1. `pnpm samples` creates `dev-data/sample-courses.membetter`. Pass a path to write it somewhere else: `pnpm samples ~/Desktop/samples.membetter`.
+2. Start the app (`pnpm dev`) and click **Import** on Home, choose that file, then **Import**. All seven courses appear as normal courses.
+3. Import the file again at any time. The courses are recognised, so you can choose **Replace** (back to the original content) or
+   **Import as copy**.
+
+The sample words have no pictures or audio, and no progress. To see learning and statistics, practice them yourself.
+
+## Removing the sample courses (or all test data)
+
+- **Development app (`pnpm dev`):** run `pnpm dev:reset`. It deletes the dev data folder (`MemBetter-dev`), so the next `pnpm dev` starts
+  empty. Your installed app is not touched.
+- **Installed app:** there is no "remove all" button. Remove courses one at a time from the course menu (**⋮ Remove course**); the sample
+  courses have no special status. Removed courses stay in a trash for 30 days. To remove everything at once, quit the app and delete its data
+  folder (see "Uninstalling" below).
+- The sample file in `dev-data/` is only a file: delete it whenever you like. It is ignored by git.
+
+## Installing on macOS
+
+1. Build the installer: `pnpm package`. This takes about a minute and writes `release/MemBetter-<version>-arm64.dmg` (Apple Silicon) or
+   an `x64` file (Intel).
+2. Open the `.dmg` and drag **MemBetter** into **Applications**, then open it from Applications or Spotlight.
+3. The app is not signed. A build made on your own Mac normally opens straight away. If macOS says the app cannot be opened, right-click
+   it, choose **Open** and confirm. If it says the app is damaged, run
+   `xattr -dr com.apple.quarantine /Applications/MemBetter.app`.
+
+The installed app starts with an empty library and keeps its data in `~/Library/Application Support/MemBetter`. Automatic backups go
+to `~/Documents/MemBetter Backups` (change the folder in **Backups**). It is separate from `pnpm dev`, which uses `MemBetter-dev`.
+
+To try the app without installing it, run `pnpm package:dir` and open `release/mac-arm64/MemBetter.app`.
+
+**Uninstalling:** quit the app and drag **MemBetter** from Applications to the Trash. That removes the program only; your courses stay
+on disk. To remove your data as well (this cannot be undone, so use **Export all** first if you want a copy), delete
+`~/Library/Application Support/MemBetter`, `~/Documents/MemBetter Backups` and `~/Library/Preferences/com.membetter.app.plist`.
+Saved AI keys are in the macOS Keychain under "MemBetter Safe Storage"; remove that item in Keychain Access if you want them gone.
+
 ## Layout
 
 ```text
