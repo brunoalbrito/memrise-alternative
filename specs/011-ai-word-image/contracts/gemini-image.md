@@ -17,13 +17,8 @@ Same endpoint, headers and key rules as `specs/010-ai-word-assistant/contracts/g
 }
 ```
 
-Prompt (word and sentence are quoted data):
-
-```
-Create a simple, clear, friendly illustration that shows the meaning of the word <JSON-quoted word> as used
-in this sentence: <JSON-quoted sentence>. One clear subject on a plain light background. Do not include
-any text, letters, numbers, captions or watermarks.
-```
+Prompt: see `specs/012-fix-image-relevance/contracts/prompt.md` (a scene built from the whole selected sentence; it
+superseded the first version of this prompt).
 
 ## Response extraction
 

@@ -1,0 +1,15 @@
+# Contract: Image prompt (supersedes the prompt in specs/011-ai-word-image/contracts/gemini-image.md)
+
+```
+Draw a simple, friendly, colourful illustration of the scene described by this sentence: <JSON-quoted sentence>.
+Show what the sentence says: the people, objects, action and setting it mentions, so that the meaning of the word <JSON-quoted word> is clearly visible in the scene.
+If the sentence is abstract, show a simple everyday scene that conveys it.
+Square composition, flat illustration style. Do not include any text, letters, numbers, captions, speech bubbles or watermarks.
+```
+
+The request body, endpoint, headers, response extraction and error mapping are unchanged.
+
+## UI
+
+Under a ready picture the Image section shows `Made for: “<sentence>”` (the sentence the picture was requested
+for). Apply attaches the picture only when it was made for the currently selected sentence.

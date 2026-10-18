@@ -186,6 +186,9 @@ export function SuggestionDialog({
             {image.status === "ready" && (
               <div className="mt-1 flex flex-col items-start gap-2">
                 <ImagePreview blob={image.blob} word={state.suggestion.word} />
+                <p className="text-label-medium text-on-surface-variant">
+                  Made for: “{state.suggestion.sentences[image.index]}”
+                </p>
                 <Button variant="text" onClick={newImage}>
                   New image
                 </Button>
@@ -218,7 +221,10 @@ export function SuggestionDialog({
                   sentence: state.suggestion.sentences[state.selected],
                   ipa: state.suggestion.ipa,
                   audio: state.suggestion.audio,
-                  image: image.status === "ready" ? image.blob : null,
+                  image:
+                    image.status === "ready" && image.index === state.selected
+                      ? image.blob
+                      : null,
                 });
                 close();
               }}

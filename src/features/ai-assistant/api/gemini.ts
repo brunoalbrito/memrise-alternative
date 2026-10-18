@@ -119,7 +119,12 @@ export function extractImage(json: Json): { data: string; mimeType?: string } {
 }
 
 export function buildImagePrompt(word: string, sentence: string): string {
-  return `Create a simple, clear, friendly illustration that shows the meaning of the word ${JSON.stringify(word)} as used in this sentence: ${JSON.stringify(sentence)}. One clear subject on a plain light background. Do not include any text, letters, numbers, captions or watermarks.`;
+  return [
+    `Draw a simple, friendly, colourful illustration of the scene described by this sentence: ${JSON.stringify(sentence)}.`,
+    `Show what the sentence says: the people, objects, action and setting it mentions, so that the meaning of the word ${JSON.stringify(word)} is clearly visible in the scene.`,
+    "If the sentence is abstract, show a simple everyday scene that conveys it.",
+    "Square composition, flat illustration style. Do not include any text, letters, numbers, captions, speech bubbles or watermarks.",
+  ].join("\n");
 }
 
 export function buildTextPrompt(word: string, languageName: string): string {
