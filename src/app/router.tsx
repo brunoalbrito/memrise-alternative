@@ -5,6 +5,7 @@ import { CourseDetailPage, LevelPlaceholder } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
 import { CourseEditorPage } from "../features/course-editor";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
+import { PracticePage } from "../features/practice";
 
 // The desktop app is loaded from a file, where only hash URLs survive a reload.
 const createRouter = isDesktop() ? createHashRouter : createBrowserRouter;
@@ -22,15 +23,15 @@ export const router = createRouter([
   { path: "/course/:id", element: <CourseDetailPage /> },
   {
     path: "/course/:id/review",
-    element: <CoursePlaceholder title="Classic review" />,
+    element: <PracticePage kind="classic" />,
   },
   {
     path: "/course/:id/speed-review",
-    element: <CoursePlaceholder title="Speed review" />,
+    element: <PracticePage kind="speed" />,
   },
   {
     path: "/course/:id/learn",
-    element: <CoursePlaceholder title="Learn new words" />,
+    element: <PracticePage kind="learn" />,
   },
   { path: "/course/:id/share", element: <CoursePlaceholder title="Tweet" /> },
   { path: "/course/:id/edit", element: <CourseEditorPage tab="levels" /> },

@@ -39,6 +39,11 @@ const api: MembetterApi = {
     wordAudio: (word) => ipcRenderer.invoke("ai:wordAudio", { word }),
     wordImage: (word, sentence) => ipcRenderer.invoke("ai:wordImage", { word, sentence }),
   },
+  study: {
+    startSession: (courseId, kind, wordCount) => ipcRenderer.invoke("study:start", { courseId, kind, wordCount }),
+    answer: (sessionId, outcome) => ipcRenderer.invoke("study:answer", { sessionId, ...outcome }),
+    endSession: (sessionId, status) => ipcRenderer.invoke("study:end", { sessionId, status }),
+  },
   library: {
     load: () => ipcRenderer.invoke("library:load"),
     apply: (change) => ipcRenderer.invoke("library:apply", change),

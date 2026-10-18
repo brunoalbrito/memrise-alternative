@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { isDesktop } from "../../../shared/api";
-import { getMedia, mediaUrl } from "../../../shared/media/mediaStore";
+import { isDesktop } from "../api";
+import { getMedia, mediaUrl } from "./mediaStore";
 
 /** URL for a stored file: served by the app in the desktop build, an object URL (revoked when unused) in the browser. */
 export function useMediaUrl(id: string): string | null {

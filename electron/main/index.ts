@@ -12,6 +12,7 @@ import { AiService } from "../services/ai/service";
 import { Secrets } from "../services/secrets";
 import { Settings } from "../services/settings";
 import { osCipher, shrinkImage } from "./secureStorage";
+import { EndSessionSchema, OutcomeSchema, Study, StartSessionSchema } from "../services/study";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
@@ -21,6 +22,7 @@ let library: OpenedLibrary | null = null;
 let media: MediaStore | null = null;
 let secrets: Secrets | null = null;
 let ai: AiService | null = null;
+let study: Study | null = null;
 
 registerMediaScheme();
 
@@ -142,6 +144,9 @@ function registerIpc(): void {
   handle("ai:wordText", WordTextSchema, ({ word, languageName }) => ai!.wordText(word, languageName));
   handle("ai:wordAudio", WordOnlySchema, ({ word }) => ai!.wordAudio(word));
   handle("ai:wordImage", WordImageSchema, ({ word, sentence }) => ai!.wordImage(word, sentence));
+  handle("study:start", StartSessionSchema, (input) => study!.start(input));
+  handle("study:answer", OutcomeSchema, (outcome) => study!.answer(outcome));
+  handle("study:end", EndSessionSchema, ({ sessionId, status }) => study!.end(sessionId, status));
   handle("library:load", null, () => loadLibrary(library!.db));
   handle("library:apply", LibraryChangeSchema, (change) => {
     applyChange(library!.db, change);
@@ -164,6 +169,8 @@ function start(): void {
   purgeTrash(library.db);
   media = new MediaStore(library.db, join(app.getPath("userData"), "library", "media"));
   media.collectGarbage();
+  study = new Study(library.db);
+  study.abandonOpenSessions();
   const settings = new Settings(library.db);
   secrets = new Secrets(settings, osCipher);
   ai = new AiService(secrets, settings, shrinkImage);

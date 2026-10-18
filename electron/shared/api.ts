@@ -25,6 +25,26 @@ export interface WordText {
   ipa: string;
 }
 
+export type SessionKind = "learn" | "classic" | "speed";
+export type AnswerResult = "correct" | "hinted" | "wrong" | "gave_up" | "timeout";
+
+export interface AnswerOutcome {
+  wordId: string;
+  result: AnswerResult;
+  hintsUsed: number;
+  attempts: number;
+  elapsedMs: number;
+  points: number;
+}
+
+export interface SessionSummary {
+  sessionId: string;
+  answered: number;
+  correct: number;
+  hints: number;
+  points: number;
+}
+
 /** Result envelope returned by every `window.api` call. */
 export type ApiError = { code: string; message: string };
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -76,6 +96,12 @@ export interface MembetterApi {
     wordAudio(word: string): Promise<Result<Uint8Array>>;
     /** JPEG bytes. */
     wordImage(word: string, sentence: string): Promise<Result<Uint8Array>>;
+  };
+  study: {
+    startSession(courseId: string, kind: SessionKind, wordCount: number): Promise<Result<string>>;
+    /** Records one answer and returns the running totals. */
+    answer(sessionId: string, outcome: AnswerOutcome): Promise<Result<SessionSummary>>;
+    endSession(sessionId: string, status: "completed" | "abandoned"): Promise<Result<SessionSummary>>;
   };
   library: {
     /** Everything the learner has stored. */

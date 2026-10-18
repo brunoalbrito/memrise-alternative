@@ -16,7 +16,7 @@ export function handle<I, O>(
       }
       return { ok: true, data: await fn(input.data) };
     } catch (error) {
-      if (error instanceof Error && ["MediaError", "ExchangeError", "AiError", "SecretsUnavailableError"].includes(error.name) && "code" in error && typeof (error as { code: unknown }).code === "string") {
+      if (error instanceof Error && ["MediaError", "ExchangeError", "AiError", "SecretsUnavailableError", "StudyError"].includes(error.name) && "code" in error && typeof (error as { code: unknown }).code === "string") {
         return { ok: false, error: { code: (error as { code: string }).code, message: error.message } };
       }
       console.error(`[ipc] ${channel} failed`, error);
