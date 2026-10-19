@@ -42,7 +42,9 @@ pnpm test:e2e      # builds the app, then drives the real app with Playwright (o
 ```
 
 Run `pnpm test:e2e` with nothing else using the keyboard: some tests type into the app window. Every test uses a temporary data
-folder, so none of them touches your own courses.
+folder, so none of them touches your own courses. A guard enforces this: every test app must use a temporary folder, and after the run
+`pnpm test:e2e` fails if anything new appeared in the library folders of the installed app (`MemBetter`), of the development app
+(`MemBetter-dev`) or in `~/Documents/MemBetter Backups`.
 
 To run one test file: `pnpm exec vitest run tests/unit/study.test.ts` or `pnpm exec playwright test tests/e2e/practice.spec.ts`.
 

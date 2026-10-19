@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { assertTemporary } from "./guard";
 import { _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
 
 export interface Launched {
@@ -15,10 +16,11 @@ export async function launch(
   userData = mkdtempSync(join(tmpdir(), "membetter-e2e-")),
   env: Record<string, string> = {},
 ): Promise<Launched> {
+  assertTemporary(userData);
   const app = await electron.launch({
     args: [".", `--user-data-dir=${userData}`],
-    // Backups never go to the real Documents folder during tests.
-    env: { ...process.env, MEMBETTER_BACKUP_FOLDER: join(userData, "backups"), ...env } as Record<string, string>,
+    // Backups and the app-data folder never go to the real places during tests.
+    env: { ...process.env, MEMBETTER_BACKUP_FOLDER: join(userData, "backups"), MEMBETTER_APP_DATA: join(userData, "appdata"), ...env } as Record<string, string>,
   });
   const page = await app.firstWindow();
   await page.waitForLoadState("domcontentloaded");
