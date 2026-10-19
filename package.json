@@ -21,6 +21,7 @@
     "package:dir": "pnpm build && electron-builder --dir",
     "test:packaged": "PACKAGED_APP=\"$PWD/release/mac-arm64/MemBetter.app/Contents/MacOS/MemBetter\" playwright test packaged",
     "samples": "node scripts/make-sample-library.ts",
+    "dev:samples": "node scripts/dev-samples.ts",
     "dev:reset": "node scripts/reset-dev-data.ts"
   },
   "dependencies": {
