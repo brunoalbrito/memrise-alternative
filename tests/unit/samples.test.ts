@@ -5,9 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openLibrary } from "../../electron/db/connection";
 import { importArchive, previewOf, readArchive } from "../../electron/services/exchange";
 import { loadLibrary } from "../../electron/services/library";
-import { MediaStore } from "../../electron/services/media";
+import { MediaStore, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, sniff } from "../../electron/services/media";
 import { buildSampleLibrary } from "../../scripts/make-sample-library";
 import { sampleCourses } from "../../scripts/sample-data";
+import { makePng, makeWav } from "../../scripts/sample-media";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -36,4 +37,53 @@ describe("sample library (development data)", () => {
     expect(snap.createdCourses.every((c) => c.itemsLearned === 0 && c.itemsDue === 0)).toBe(true);
     db.close();
   });
+
+  it("has pictures and recordings, enough for every choice exercise, and they are valid media", () => {
+    const words = sampleCourses.flatMap((c) => c.levels.flatMap((l) => l.words));
+    expect(words.filter((w) => w.image).length).toBeGreaterThanOrEqual(4);
+    expect(words.filter((w) => w.audio).length).toBeGreaterThanOrEqual(4);
+    const both = sampleCourses.find((c) => c.levels.flatMap((l) => l.words).filter((w) => w.image && w.audio).length >= 8);
+    expect(both).toBeDefined();
+
+    const archive = readArchive(writeSample());
+    expect(archive.missingMedia).toBe(0);
+    expect(archive.media.size).toBeGreaterThan(0);
+    for (const { bytes, ext } of archive.media.values()) {
+      const found = sniff(bytes);
+      expect(found?.ext).toBe(ext);
+      expect(bytes.length).toBeLessThan(found?.kind === "images" ? MAX_IMAGE_BYTES : MAX_AUDIO_BYTES);
+    }
+  });
+
+  it("makes a different picture and recording for every word, and the same ones every time", () => {
+    expect(makePng("cat")).toEqual(makePng("cat"));
+    expect(makePng("cat")).not.toEqual(makePng("dog"));
+    expect(makeWav("cat")).toEqual(makeWav("cat"));
+    expect(makeWav("cat")).not.toEqual(makeWav("dog"));
+    expect(sniff(makePng("cat"))?.ext).toBe("png");
+    expect(sniff(makeWav("cat"))?.ext).toBe("wav");
+  });
+
+  it("imports the media into the library and does not store it twice", () => {
+    const dir = mkdtempSync(join(tmpdir(), "membetter-samples-"));
+    dirs.push(dir);
+    const { db } = openLibrary(join(dir, "membetter.db"));
+    const media = new MediaStore(db, join(dir, "media"));
+    importArchive(db, media, readArchive(writeSample()), "replace");
+    importArchive(db, media, readArchive(writeSample()), "replace");
+    const course = loadLibrary(db).courseLevels["custom-sample-pictures-and-sounds"] ?? [];
+    const words = course.flatMap((l) => l.words);
+    expect(words).toHaveLength(12);
+    expect(words.every((w) => w.images.length === 1 && w.audio.length === 1)).toBe(true);
+    expect(words.every((w) => media.resolve(w.images[0]!.id) && media.resolve(w.audio[0]!.id))).toBe(true);
+    db.close();
+  });
 });
+
+function writeSample(): string {
+  const dir = mkdtempSync(join(tmpdir(), "membetter-samples-"));
+  dirs.push(dir);
+  const file = join(dir, "sample-courses.membetter");
+  writeFileSync(file, buildSampleLibrary());
+  return file;
+}

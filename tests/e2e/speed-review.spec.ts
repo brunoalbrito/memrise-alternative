@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { expect, test, type Page } from "@playwright/test";
+import { sampleCourses } from "../../scripts/sample-data";
 import { cleanup, launch } from "./launch";
+import { go as goTo, importSamples, learnAll, makeDue as dueAll, only, reviewLog, SAMPLER } from "./fixtures/sample-library";
 
 type Api = {
   library: { apply(c: unknown): Promise<unknown> };
@@ -209,5 +211,135 @@ test("explains when there is nothing due or too few words for a choice game", as
   } finally {
     await again.close();
     cleanup(small.userData);
+  }
+});
+
+
+// ---- Rounds on the sample library (pictures and recordings) ----------------------------------------------------
+
+const MEANING_TO_WORD = new Map(sampleCourses.find((c) => c.id === SAMPLER)!.levels.flatMap((l) => l.words).map((w) => [w.meaning, w.text]));
+
+/** Imports the samples, learns the sampler course once and makes its words due; returns the data folder with the app closed. */
+async function dueSampler(): Promise<string> {
+  const first = await launch();
+  await importSamples(first);
+  await learnAll(first.page, SAMPLER);
+  await first.close();
+  dueAll(first.userData);
+  return first.userData;
+}
+
+/** Answers a meaning-to-word question by pressing the number of the right option (or of a wrong one). */
+async function answerSample(page: Page, right: boolean) {
+  const shown = [...MEANING_TO_WORD.keys()];
+  let word = "";
+  for (const meaning of shown) {
+    if ((await page.getByText(meaning, { exact: true }).count()) > 0) word = MEANING_TO_WORD.get(meaning)!;
+  }
+  expect(word).not.toBe("");
+  const options = await page.getByRole("group", { name: "Answers" }).getByRole("button").allTextContents();
+  const index = options.findIndex((t) => (right ? t.startsWith(word) : !t.startsWith(word)));
+  await page.keyboard.press(String(index + 1));
+}
+
+test("speed review asks picture, recording and text questions made from the sample words", async () => {
+  const userData = await dueSampler();
+  const app = await launch(userData);
+  const { page } = app;
+  const kinds: [string, () => Promise<void>][] = [
+    ["image-to-word", async () => expect(page.getByRole("img", { name: "Picture clue" })).toBeVisible()],
+    ["word-to-image", async () => expect(page.getByRole("group", { name: "Answers" }).locator("img")).toHaveCount(4)],
+    ["audio-to-word", async () => expect(page.getByRole("button", { name: "Play the recording" })).toBeVisible()],
+    ["word-to-audio", async () => expect(page.getByRole("button", { name: /^Play recording/ })).toHaveCount(4)],
+    ["word-to-meaning", async () => expect(page.getByRole("heading", { name: "What does this word mean?" })).toBeVisible()],
+  ];
+  try {
+    for (const [kind, check] of kinds) {
+      await only(page, [kind]);
+      await page.reload();
+      await goTo(page, `#/course/${SAMPLER}/speed-review`);
+      await expect(page.getByRole("heading", { name: /Speed review/ })).toBeVisible();
+      await expect(page.getByRole("img", { name: "3 lives left" })).toBeVisible();
+      await check();
+      await page.keyboard.press("1");
+      await expect(page.getByText(/Correct!|Not quite/)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "End session" }).click();
+    }
+  } finally {
+    await app.close();
+  }
+  const log = reviewLog(userData, "speed");
+  expect(log.map((r) => r.exercise)).toEqual(kinds.map(([k]) => k));
+  expect(log.every((r) => ["correct", "gave_up"].includes(r.result))).toBe(true);
+  cleanup(userData);
+});
+
+test("a whole round with the keyboard only: streak, multiplier, a score equal to the log and a saved best", async () => {
+  const userData = await dueSampler();
+  const app = await launch(userData);
+  const { page } = app;
+  try {
+    await only(page, ["meaning-to-word"]);
+    await page.reload();
+    await goTo(page, `#/course/${SAMPLER}/speed-review`);
+    await expect(page.getByText(/question 1 of 12/)).toBeVisible();
+    for (let i = 0; i < 12; i += 1) {
+      await expect(page.getByText(new RegExp(`question ${i + 1} of 12`))).toBeVisible();
+      if (i === 5) await expect(page.getByLabel("Streak 5, multiplier 2")).toBeVisible();
+      await answerSample(page, true);
+      if (i < 11) await expect(page.getByText(/Correct! \+\d+ points/)).toBeVisible();
+    }
+    await expect(page.getByRole("heading", { name: "Round complete" })).toBeVisible();
+    await expect(page.getByText("New personal best!")).toBeVisible();
+    await expect(page.getByText("Longest streak").locator("..")).toContainText("12");
+    await expect(page.getByText("Accuracy").locator("..")).toContainText("100%");
+    await expect(page.getByRole("button", { name: "Play again" })).toBeVisible();
+  } finally {
+    await app.close();
+  }
+  const log = reviewLog(userData, "speed");
+  expect(log).toHaveLength(12);
+  expect(log.every((r) => r.result === "correct")).toBe(true);
+  const total = log.reduce((sum, r) => sum + r.points, 0);
+  expect(total).toBeGreaterThanOrEqual(12 * 100);
+  const db = new Database(join(userData, "library", "membetter.db"), { readonly: true });
+  expect(db.prepare("SELECT value FROM settings WHERE key = ?").get(`speed.best.${SAMPLER}`)).toEqual({ value: String(total) });
+  expect(db.prepare("SELECT status, points_total FROM sessions WHERE kind = 'speed'").all()).toEqual([{ status: "completed", points_total: total }]);
+  db.close();
+  cleanup(userData);
+});
+
+test("with reduced motion the red tint changes in coarse steps, otherwise it fades smoothly", async () => {
+  const userData = await dueSampler();
+  const app = await launch(userData);
+  const { page } = app;
+  const sample = async () => {
+    const seen: number[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      seen.push(Number(await page.getByTestId("red-tint").evaluate((e) => getComputedStyle(e).opacity)));
+      await page.waitForTimeout(350);
+    }
+    return seen;
+  };
+  const stepped = (n: number) => Math.abs(n * 5 - Math.round(n * 5)) < 0.001;
+  try {
+    await only(page, ["meaning-to-word"]);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await goTo(page, `#/course/${SAMPLER}/speed-review`);
+    await expect(page.getByTestId("red-tint")).toBeAttached();
+    const reduced = await sample();
+    expect(reduced.every(stepped)).toBe(true);
+    expect(Math.max(...reduced)).toBeGreaterThan(0);
+
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.reload();
+    await goTo(page, `#/course/${SAMPLER}/speed-review`);
+    await expect(page.getByTestId("red-tint")).toBeAttached();
+    expect((await sample()).some((n) => !stepped(n))).toBe(true);
+  } finally {
+    await app.close();
+    cleanup(userData);
   }
 });

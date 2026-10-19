@@ -1,5 +1,5 @@
 /**
- * Sample courses for development and demos. They are NOT part of the app: `pnpm samples` turns them into a
+ * The sample course for development and demos: one course with a picture and a recording for every word, so typing, picture and listening exercises, speed review, levels and editing can all be tried. It is NOT part of the app: `pnpm samples` turns them into a
  * `.membetter` library file that you import like any other file (Import button on Home).
  */
 
@@ -8,6 +8,10 @@ export interface SampleWord {
   text: string;
   meaning: string;
   example: string;
+  /** The word has a generated picture. */
+  image: boolean;
+  /** The word has a generated recording. */
+  audio: boolean;
 }
 export interface SampleLevel {
   id: string;
@@ -30,6 +34,8 @@ type Seed = {
 };
 
 interface CourseSeed {
+  /** Pictures and/or recordings generated for every word of the course. */
+  media?: { image?: boolean; audio?: boolean };
   levels: Seed[];
 }
 
@@ -37,95 +43,17 @@ const TEST_WORD = "Test on Word, prompt with Images.";
 const TEST_MEANING = "Test on Meaning, prompt with Word.";
 
 const seeds: Record<string, CourseSeed> = {
-  "english-visual-dictionary": {
+  "pictures-and-sounds": {
+    media: { image: true, audio: true },
     levels: [
-      {
-        name: "First Level",
-        tested: TEST_WORD,
-        words: [
-          ["sink", "a bowl that is attached to the wall in a kitchen or bathroom in which you wash dishes or your hands"],
-          ["wash", "to clean something using water"],
-          ["laundry folding", "fold clothes after they have been washed and dried"],
-          ["hamper", "a container used for carrying dirty clothes"],
-          ["rhythm", "a strong pattern of sounds, words, or musical notes"],
-          ["humid", "containing extremely small drops of water in the air"],
-          ["variant", "related to another thing but is not exactly the same"],
-        ],
-      },
-      {
-        name: "Second Level",
-        tested: TEST_WORD,
-        words: [
-          ["ladder", "a set of steps fixed between two long pieces of wood or metal"],
-          ["pillow", "a soft object you rest your head on in bed"],
-          ["curtain", "a piece of cloth that hangs across a window"],
-          ["shelf", "a flat board fixed to a wall for keeping things on"],
-          ["carpet", "a thick soft covering for a floor"],
-        ],
-      },
-      {
-        name: "New level",
-        tested: TEST_MEANING,
-        words: [
-          ["bridge", "a structure built over a river or road so people can cross it"],
-          ["market", "a place where people buy and sell goods"],
-          ["pavement", "a path at the side of a road for people walking"],
-          ["traffic light", "a signal with red, amber and green lights that controls traffic"],
-        ],
-      },
-    ],
-  },
-  "irregular-verbs": {
-    levels: [
-      { name: "Common Verbs", tested: TEST_MEANING, words: [["be", "was / were / been"], ["have", "had / had"], ["do", "did / done"]] },
-      { name: "Past Forms", tested: TEST_MEANING, words: [["go", "went / gone"], ["see", "saw / seen"], ["take", "took / taken"]] },
-      { name: "Tricky Verbs", tested: TEST_MEANING, words: [["lie", "lay / lain"], ["lay", "laid / laid"], ["rise", "rose / risen"]] },
-      { name: "Review Set", tested: TEST_MEANING, words: [["write", "wrote / written"], ["speak", "spoke / spoken"], ["break", "broke / broken"]] },
-    ],
-  },
-  "english-polyglot": {
-    levels: [
-      { name: "Greetings", tested: TEST_MEANING, words: [["hello", "a common greeting"], ["good morning", "a greeting used before noon"], ["see you later", "a friendly goodbye"], ["nice to meet you", "said when meeting someone for the first time"]] },
-      { name: "Daily Life", tested: TEST_MEANING, words: [["commute", "to travel regularly between home and work"], ["groceries", "food and other items bought at a shop"], ["chore", "a small job you do regularly at home"], ["appointment", "an arranged time to meet someone"]] },
-      { name: "Opinions", tested: TEST_MEANING, words: [["I reckon", "I think"], ["in my view", "according to my opinion"], ["on the other hand", "used to give a different point of view"], ["to be honest", "used before saying what you really think"]] },
-    ],
-  },
-  "japanese-hiragana": {
-    levels: [
-      { name: "Vowels and K", tested: TEST_MEANING, words: [["あ", "a"], ["い", "i"], ["う", "u"], ["え", "e"], ["お", "o"]] },
-      { name: "S and T", tested: TEST_MEANING, words: [["さ", "sa"], ["し", "shi"], ["す", "su"], ["せ", "se"], ["そ", "so"]] },
-    ],
-  },
-  "japanese-n5-vocab": {
-    levels: [
-      { name: "Numbers", tested: TEST_MEANING, words: [["一", "one"], ["二", "two"], ["三", "three"], ["四", "four"]] },
-      { name: "People", tested: TEST_MEANING, words: [["私", "I, me"], ["友達", "friend"], ["先生", "teacher"], ["学生", "student"]] },
-      { name: "Time", tested: TEST_MEANING, words: [["今日", "today"], ["明日", "tomorrow"], ["昨日", "yesterday"], ["今", "now"]] },
-    ],
-  },
-  "spanish-mexico-basics": {
-    levels: [
-      { name: "Greetings", tested: TEST_MEANING, words: [["hola", "hello"], ["buenos días", "good morning"], ["buenas noches", "good night"], ["¿cómo estás?", "how are you?"], ["mucho gusto", "nice to meet you"]] },
-      { name: "Ordering Food", tested: TEST_MEANING, words: [["la cuenta", "the bill"], ["un taco", "a taco"], ["agua, por favor", "water, please"], ["está delicioso", "it is delicious"], ["sin picante", "not spicy"]] },
-    ],
-  },
-  "networking-fundamentals": {
-    levels: [
-      { name: "Layers", tested: TEST_MEANING, words: [["physical layer", "the layer that moves raw bits over a medium"], ["data link layer", "the layer that moves frames between neighboring devices"], ["network layer", "the layer that routes packets between networks"], ["transport layer", "the layer that provides end-to-end delivery"]] },
-      { name: "Addressing", tested: TEST_MEANING, words: [["IP address", "a number that identifies a device on a network"], ["subnet mask", "a value that splits an address into network and host parts"], ["MAC address", "a hardware address of a network interface"], ["gateway", "a device that connects a network to other networks"]] },
+      { name: "Animals", tested: TEST_WORD, words: [["cat", "a small furry pet", "The cat sleeps."], ["dog", "a pet that barks", "The dog runs."], ["bird", "an animal that flies", "A bird sings."], ["fish", "an animal that swims", "The fish is red."], ["horse", "a large animal people ride"], ["mouse", "a very small furry animal"]] },
+      { name: "Things", tested: TEST_MEANING, words: [["table", "furniture with a flat top", "Put it on the table."], ["chair", "a seat for one person"], ["window", "an opening in a wall with glass"], ["door", "you open it to enter a room"], ["lamp", "gives light in a room"], ["clock", "shows the time"]] },
     ],
   },
 };
 
-
 const info: Record<string, { title: string; teaching: string; speakers: string }> = {
-  "english-visual-dictionary": { title: "English Visual Dictionary", teaching: "en-gb", speakers: "en-gb" },
-  "irregular-verbs": { title: "Learn English Irregular Verbs", teaching: "en-gb", speakers: "en-gb" },
-  "english-polyglot": { title: "Learn English for Polyglots", teaching: "en-gb", speakers: "en-gb" },
-  "japanese-hiragana": { title: "Japanese Hiragana Starter", teaching: "ja", speakers: "en-gb" },
-  "japanese-n5-vocab": { title: "Japanese N5 Essential Vocabulary", teaching: "ja", speakers: "en-gb" },
-  "spanish-mexico-basics": { title: "Spanish (Mexico) Everyday Phrases", teaching: "es-mx", speakers: "en-gb" },
-  "networking-fundamentals": { title: "Computer Networking Fundamentals", teaching: "en-us", speakers: "en-us" },
+  "pictures-and-sounds": { title: "Sample Course: Pictures and Sounds", teaching: "en-gb", speakers: "en-gb" },
 };
 
 export const sampleCourses: SampleCourse[] = Object.entries(seeds).map(([key, seed]) => ({
@@ -137,6 +65,13 @@ export const sampleCourses: SampleCourse[] = Object.entries(seeds).map(([key, se
     id: `sample-${key}-l${i}`,
     name: level.name,
     tested: level.tested,
-    words: level.words.map(([text, meaning, example], j) => ({ id: `sample-${key}-l${i}-w${j}`, text, meaning, example: example ?? "" })),
+    words: level.words.map(([text, meaning, example], j) => ({
+      id: `sample-${key}-l${i}-w${j}`,
+      text,
+      meaning,
+      example: example ?? "",
+      image: seed.media?.image ?? false,
+      audio: seed.media?.audio ?? false,
+    })),
   })),
 }));

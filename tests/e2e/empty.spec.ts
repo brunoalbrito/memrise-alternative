@@ -24,15 +24,15 @@ test("a new library is empty, and the development sample file imports like any o
     await first.page.getByRole("button", { name: "Import", exact: true }).click();
     await expect(first.page.getByRole("heading", { name: "Import library?" })).toBeVisible();
     await first.page.getByRole("button", { name: "Import", exact: true }).last().click();
-    await expect(first.page.getByText("Imported 7 courses.")).toBeVisible();
-    await expect(first.page.getByText("English Visual Dictionary").first()).toBeVisible();
+    await expect(first.page.getByText("Imported 1 course.")).toBeVisible();
+    await expect(first.page.getByText("Sample Course: Pictures and Sounds").first()).toBeVisible();
   } finally {
     await first.close();
   }
 
   const second = await launch(first.userData);
   try {
-    await expect(second.page.getByText("English Visual Dictionary").first()).toBeVisible();
+    await expect(second.page.getByText("Sample Course: Pictures and Sounds").first()).toBeVisible();
   } finally {
     await second.close();
     cleanup(first.userData);

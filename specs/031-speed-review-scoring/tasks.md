@@ -4,3 +4,4 @@
 - [x] T003 HUD: score, streak and multiplier always visible
 - [x] T004 Summary screen: result, personal best, missed words, play again
 - [x] T005 E2E: score on screen equals the log, personal best saved and shown after restart
+- [x] T006 E2E (spec 032): full round score equals the answer log; personal best saved
