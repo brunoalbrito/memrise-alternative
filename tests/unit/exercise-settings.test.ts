@@ -55,3 +55,24 @@ describe("answer log and plan", () => {
     expect(study.plan({ courseId: "c", kind: "learn", wordIds: ["w3"] }).states).toEqual({ w3: 0 });
   });
 });
+
+describe("speed review best score", () => {
+  it("keeps the best score per course and only reports improvements", () => {
+    const study = new Study(ctx.db);
+    expect(study.speedBest("c")).toBeNull();
+    expect(study.saveSpeedScore("c", 0)).toEqual({ best: null, improved: false });
+    expect(study.saveSpeedScore("c", 450)).toEqual({ best: 450, improved: true });
+    expect(study.saveSpeedScore("c", 300)).toEqual({ best: 450, improved: false });
+    expect(study.saveSpeedScore("c", 450)).toEqual({ best: 450, improved: false });
+    expect(study.saveSpeedScore("c", 900)).toEqual({ best: 900, improved: true });
+    expect(study.speedBest("c")).toBe(900);
+    expect(study.speedBest("other")).toBeNull();
+    expect(new Study(ctx.db).speedBest("c")).toBe(900); // survives reopening
+  });
+  it("accepts per-answer points above 100 in the log", () => {
+    const study = new Study(ctx.db);
+    const s = study.start({ courseId: "c", kind: "speed", wordCount: 1 });
+    study.answer({ sessionId: s, wordId: "w1", result: "correct", hintsUsed: 0, attempts: 0, elapsedMs: 900, points: 750, exercise: "image-to-word" });
+    expect(study.summary(s).points).toBe(750);
+  });
+});

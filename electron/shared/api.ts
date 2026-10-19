@@ -190,6 +190,10 @@ export interface MembetterApi {
     /** Sets the flag for many words at once. */
     markMany(courseId: string, wordIds: string[], flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
     setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
+    /** Best speed review score of a course (null before the first game). */
+    speedBest(courseId: string): Promise<Result<number | null>>;
+    /** Saves a finished game's score if it is the best so far. */
+    saveSpeedScore(courseId: string, score: number): Promise<Result<{ best: number | null; improved: boolean }>>;
     /** Exercise types that are turned on. */
     exerciseSettings(): Promise<Result<ExerciseKind[]>>;
     setExerciseSettings(enabled: ExerciseKind[]): Promise<Result<null>>;

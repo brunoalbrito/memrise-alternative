@@ -50,6 +50,8 @@ const api: MembetterApi = {
     mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
     markMany: (courseId, wordIds, flag, value) => ipcRenderer.invoke("study:markMany", { courseId, wordIds, flag, value }),
     setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
+    speedBest: (courseId) => ipcRenderer.invoke("study:speedBest", { courseId }),
+    saveSpeedScore: (courseId, score) => ipcRenderer.invoke("study:saveSpeedScore", { courseId, score }),
     exerciseSettings: () => ipcRenderer.invoke("study:exerciseSettings"),
     setExerciseSettings: (enabled) => ipcRenderer.invoke("study:setExerciseSettings", { enabled }),
   },

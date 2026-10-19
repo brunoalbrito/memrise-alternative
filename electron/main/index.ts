@@ -16,7 +16,7 @@ import { AiService } from "../services/ai/service";
 import { Secrets } from "../services/secrets";
 import { Settings } from "../services/settings";
 import { osCipher, shrinkImage } from "./secureStorage";
-import { CourseIdSchema, EndSessionSchema, MarkManySchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, Study, StartSessionSchema } from "../services/study";
+import { CourseIdSchema, EndSessionSchema, MarkManySchema, MarkSchema, NewPerDaySchema, OutcomeSchema, PlanSchema, SpeedScoreSchema, Study, StartSessionSchema } from "../services/study";
 import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemSchema, ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
@@ -192,6 +192,8 @@ function registerIpc(): void {
     study!.markMany(input);
     return null;
   });
+  handle("study:speedBest", CourseIdSchema, ({ courseId }) => study!.speedBest(courseId));
+  handle("study:saveSpeedScore", SpeedScoreSchema, ({ courseId, score }) => study!.saveSpeedScore(courseId, score));
   handle("study:exerciseSettings", null, () => getEnabledExercises(appSettings!));
   handle("study:setExerciseSettings", SetExercisesSchema, ({ enabled }) => {
     setEnabledExercises(appSettings!, enabled);

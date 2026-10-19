@@ -19,7 +19,7 @@ export const OutcomeSchema = z.object({
   hintsUsed: z.number().int().min(0).max(100),
   attempts: z.number().int().min(0).max(1000),
   elapsedMs: z.number().int().min(0).max(24 * 3600 * 1000),
-  points: z.number().int().min(0).max(100),
+  points: z.number().int().min(0).max(10_000),
   exercise: ExerciseKindSchema.default("type"),
 });
 export const EndSessionSchema = z.object({
@@ -60,6 +60,13 @@ export const MarkManySchema = z.object({
   value: z.boolean(),
 });
 export const NewPerDaySchema = z.object({ courseId: z.string().min(1).max(100), value: z.number().int().min(1).max(100) });
+export const SpeedScoreSchema = z.object({ courseId: z.string().min(1).max(100), score: z.number().int().min(0).max(1_000_000) });
+export interface SpeedBest {
+  /** Best speed review score of the course, or null before the first game. */
+  best: number | null;
+  /** The score just saved beat the earlier best (or was the first above zero). */
+  improved: boolean;
+}
 export const CourseIdSchema = z.object({ courseId: z.string().min(1).max(100) });
 
 export interface Plan {
@@ -279,6 +286,25 @@ export class Study {
          in_long_term = @inLongTerm, updated_at = @now`,
     );
     for (const c of cards) insert.run({ ...c, courseId, ignored: c.ignored ? 1 : 0, inLongTerm: c.inLongTerm ? 1 : 0, now });
+  }
+
+  /** Best speed review score of a course. */
+  speedBest(courseId: string): number | null {
+    const row = this.db.prepare("SELECT value FROM settings WHERE key = ?").get(`speed.best.${courseId}`) as { value: string } | undefined;
+    const score = row ? Number(row.value) : NaN;
+    return Number.isFinite(score) ? score : null;
+  }
+
+  /** Remembers a score when it is the best so far for the course. */
+  saveSpeedScore(courseId: string, score: number): SpeedBest {
+    const previous = this.speedBest(courseId);
+    const improved = score > 0 && (previous === null || score > previous);
+    if (improved) {
+      this.db
+        .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value")
+        .run(`speed.best.${courseId}`, String(score));
+    }
+    return { best: improved ? score : previous, improved };
   }
 
   newPerDay(courseId: string): number {
