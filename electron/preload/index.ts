@@ -50,6 +50,8 @@ const api: MembetterApi = {
     mark: (courseId, wordId, flag, value) => ipcRenderer.invoke("study:mark", { courseId, wordId, flag, value }),
     markMany: (courseId, wordIds, flag, value) => ipcRenderer.invoke("study:markMany", { courseId, wordIds, flag, value }),
     setNewPerDay: (courseId, value) => ipcRenderer.invoke("study:setNewPerDay", { courseId, value }),
+    exerciseSettings: () => ipcRenderer.invoke("study:exerciseSettings"),
+    setExerciseSettings: (enabled) => ipcRenderer.invoke("study:setExerciseSettings", { enabled }),
   },
   anki: {
     exportDeck: (item) => ipcRenderer.invoke("anki:export", { item }),

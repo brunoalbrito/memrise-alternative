@@ -1,5 +1,8 @@
 import type { Word } from "../../home";
 import { wordHasText } from "../../home";
+import { hasPrompt } from "./exercises";
+
+export { hasPrompt };
 
 export const SESSION_SIZE = 10;
 
@@ -9,9 +12,6 @@ export interface PracticeQueue {
   skipped: number;
 }
 
-/** A word can be practiced when it has text and something to prompt with. */
-export const hasPrompt = (word: Word): boolean =>
-  word.images.length > 0 || word.meaning.trim() !== "" || word.example.trim() !== "";
 
 /** The words of one session, in level order. Scheduling (spec 022) replaces this ordering with due and new words. */
 export function buildQueue(levels: { words: Word[] }[], size = SESSION_SIZE): PracticeQueue {

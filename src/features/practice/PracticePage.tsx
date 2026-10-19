@@ -3,15 +3,19 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { getApi, isDesktop } from "../../shared/api";
 import { Button } from "../../shared/ui/Button";
 import { IconButton } from "../../shared/ui/IconButton";
-import { BackspaceIcon, BoltIcon, CloseIcon, HelpIcon, KeyboardIcon, RemoveCircleIcon, SparkleIcon, WaterDropIcon } from "../../shared/ui/icons";
+import { BackspaceIcon, BoltIcon, CloseIcon, HelpIcon, KeyboardIcon, RemoveCircleIcon, SparkleIcon, TuneIcon, WaterDropIcon } from "../../shared/ui/icons";
 import { languages, useCourse, useCourseLevels, wordHasText, type Word } from "../home";
+import { ExerciseSettingsDialog } from "./components/ExerciseSettingsDialog";
 import { ExitDialog } from "./components/ExitDialog";
+import { ChoiceExercise } from "./components/ChoiceExercise";
 import { LetterTile } from "./components/LetterTile";
 import { SessionSummary } from "./components/SessionSummary";
 import { WordClue } from "./components/WordClue";
 import { SPEED_SECONDS, usePracticeSession, type PracticeKind } from "./hooks/usePracticeSession";
 import { SESSION_SIZE } from "./model/queue";
-import { hasPrompt } from "./model/queue";
+import { hasPrompt, type PoolWord } from "./model/exercises";
+import { useExerciseSettings } from "./store/exerciseSettings";
+import { playAudio } from "../../shared/media/playAudio";
 import { tileShortcut } from "./model/tiles";
 import { isUsed } from "./model/word";
 
@@ -29,6 +33,10 @@ function readShortcuts(): boolean {
 interface Planned {
   words: Word[];
   skipped: number;
+  /** Every word of the course, used for the wrong options of choice exercises. */
+  pool: PoolWord[];
+  /** Card state of each planned word. */
+  states: Record<string, number>;
   /** Why there is nothing to practice, shown instead of the screen. */
   empty: string | null;
 }
@@ -45,8 +53,9 @@ function usePlanned(courseId: string, kind: PracticeKind, round: number, levelId
   const key = `${courseId}:${kind}:${levelId ?? ""}:${round}`;
   const candidates = useMemo(() => {
     const all = levels.flatMap((level) => level.words).filter(wordHasText);
-    return { usable: all.filter(hasPrompt), skipped: all.length - all.filter(hasPrompt).length };
-  }, [levels]);
+    const pool: PoolWord[] = allLevels.flatMap((level) => level.words.filter(wordHasText).map((word) => ({ word, levelId: level.id })));
+    return { usable: all.filter(hasPrompt), skipped: all.length - all.filter(hasPrompt).length, pool };
+  }, [levels, allLevels]);
   const latest = useRef(candidates);
   useEffect(() => {
     latest.current = candidates;
@@ -54,19 +63,19 @@ function usePlanned(courseId: string, kind: PracticeKind, round: number, levelId
 
   useEffect(() => {
     let cancelled = false;
-    const { usable, skipped } = latest.current;
+    const { usable, skipped, pool } = latest.current;
     const byId = new Map(usable.map((w) => [w.id, w]));
     const done = (value: Planned) => {
       if (!cancelled) setResult({ key, planned: value });
     };
     if (!isDesktop()) {
-      done({ words: usable.slice(0, SESSION_SIZE), skipped, empty: usable.length === 0 ? "none" : null });
+      done({ words: usable.slice(0, SESSION_SIZE), skipped, pool, states: {}, empty: usable.length === 0 ? "none" : null });
       return;
     }
     getApi()
       .study.plan(courseId, kind, usable.map((w) => w.id))
       .then((result) => {
-        if (!result.ok) return done({ words: [], skipped, empty: "Your progress could not be read. Try again." });
+        if (!result.ok) return done({ words: [], skipped, pool, states: {}, empty: "Your progress could not be read. Try again." });
         const words = result.data.wordIds.flatMap((id) => byId.get(id) ?? []);
         let empty: string | null = null;
         if (words.length === 0) {
@@ -77,9 +86,9 @@ function usePlanned(courseId: string, kind: PracticeKind, round: number, levelId
             empty = result.data.nextDueAt ? `Nothing to review right now. The next words are due ${formatDue(result.data.nextDueAt)}.` : "Nothing to review yet. Learn some new words first.";
           }
         }
-        done({ words, skipped, empty });
+        done({ words, skipped, pool, states: result.data.states, empty });
       })
-      .catch(() => done({ words: [], skipped, empty: "Your progress could not be read. Try again." }));
+      .catch(() => done({ words: [], skipped, pool, states: {}, empty: "Your progress could not be read. Try again." }));
     return () => {
       cancelled = true;
     };
@@ -146,9 +155,11 @@ interface SessionProps {
 
 function Session({ courseId, backPath, title, kind, planned, languageId, onAgain }: SessionProps) {
   const navigate = useNavigate();
-  const s = usePracticeSession(courseId, kind, planned.words, planned.skipped);
+  const enabled = useExerciseSettings((state) => state.enabled);
+  const s = usePracticeSession(courseId, kind, planned.words, planned.skipped, { pool: planned.pool, states: planned.states, enabled });
   const [showShortcuts, setShowShortcuts] = useState(readShortcuts);
   const [exiting, setExiting] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const latest = useRef({ s, exiting });
   useEffect(() => {
@@ -170,7 +181,7 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const { s: current, exiting: leaving } = latest.current;
-      if (leaving || current.finished) return;
+      if (leaving || current.finished || document.querySelector("dialog[open]")) return;
       const mod = event.metaKey || event.ctrlKey;
 
       if (event.key === "Escape") {
@@ -187,6 +198,22 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
         if (current.phase === "revealed") {
           event.preventDefault();
           current.next();
+        }
+        return;
+      }
+      // Replay: R in choices; Alt+R when typing (plain R is a letter there).
+      const replayKey = current.exercise?.kind === "audio-to-word" ? !mod && !event.altKey && (event.key === "r" || event.key === "R") : current.exercise?.kind === "audio-to-type" && event.altKey && !mod && event.code === "KeyR";
+      if (replayKey) {
+        event.preventDefault();
+        const recording = current.word?.audio[0];
+        if (recording) playAudio(recording.id, current.audioFailed);
+        return;
+      }
+      if (current.isChoice) {
+        // Choice exercises: keys 1 to 4 pick an option; nothing else is typed.
+        if (!mod && !event.altKey && /^[1-4]$/.test(event.key)) {
+          event.preventDefault();
+          current.choose(Number(event.key) - 1);
         }
         return;
       }
@@ -226,10 +253,23 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
     inputRef.current?.focus();
   }, [s.index, s.state.picked.length, s.phase]);
 
+  // A listening exercise plays its recording as soon as it appears.
+  const listeningKind = s.exercise?.kind === "audio-to-word" || s.exercise?.kind === "audio-to-type";
+  const recordingId = s.word?.audio[0]?.id;
+  const { audioFailed } = s;
+  useEffect(() => {
+    if (listeningKind && recordingId && !s.finished) playAudio(recordingId, audioFailed);
+    // Play once per word (the exercise is fixed for the word); replacing the exercise after a failure must not replay.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.index, listeningKind, recordingId]);
+
   const header = (
     <header className="flex items-center gap-3 bg-primary-container px-4 py-3 text-on-primary-container">
       <WaterDropIcon className="size-7" />
       <h1 className="min-w-0 flex-1 truncate text-title-large font-medium underline decoration-2 underline-offset-4">{title}</h1>
+      <IconButton aria-label="Exercise types" onClick={() => setChoosing(true)}>
+        <TuneIcon />
+      </IconButton>
       <IconButton aria-label="Show keyboard shortcuts" aria-pressed={showShortcuts} onClick={toggleShortcuts}>
         <KeyboardIcon />
       </IconButton>
@@ -280,7 +320,7 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
     s.phase === "correct"
       ? { text: "Correct!", cls: "bg-primary-container text-on-primary-container" }
       : s.phase === "wrong"
-        ? { text: "Not quite. Fix it or ask for a hint.", cls: "bg-error-container text-on-error-container" }
+        ? { text: s.isChoice ? "Not quite. Try another." : "Not quite. Fix it or ask for a hint.", cls: "bg-error-container text-on-error-container" }
         : s.phase === "revealed"
           ? { text: `The word is “${s.word.text}”. Press Enter to continue.`, cls: "bg-tertiary-container text-on-tertiary-container" }
           : null;
@@ -307,7 +347,28 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
         </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto]">
-          <WordClue key={s.word.id} word={s.word} />
+          {s.isChoice && s.exercise ? (
+            <ChoiceExercise
+              key={s.word.id}
+              exercise={s.exercise}
+              word={s.word}
+              wrong={s.wrongChoices}
+              showAnswer={busy}
+              disabled={busy}
+              showShortcuts={showShortcuts}
+              lang={lang}
+              onPick={s.choose}
+              onAudioError={s.audioFailed}
+              feedback={
+                <>
+                  {banner && <p className={`rounded-m3-sm px-3 py-2 text-body-medium ${banner.cls}`}>{banner.text}</p>}
+                  {s.audioProblem && <p className="mt-2 text-body-medium text-error">This recording could not be played.</p>}
+                </>
+              }
+            />
+          ) : (
+            <>
+          <WordClue key={s.word.id} word={s.word} listening={s.exercise?.kind === "audio-to-type"} onAudioError={s.audioFailed} />
 
           <div>
             <label htmlFor="practice-word" className="text-label-large font-medium text-on-surface">
@@ -332,6 +393,7 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
             />
             <div id="practice-feedback" role="status" aria-live="polite" className="mt-2 min-h-10">
               {banner && <p className={`rounded-m3-sm px-3 py-2 text-body-medium ${banner.cls}`}>{banner.text}</p>}
+              {s.audioProblem && <p className="mt-2 text-body-medium text-error">This recording could not be played.</p>}
             </div>
 
             <div className="mt-3 flex flex-wrap items-start gap-2" role="group" aria-label="Letters">
@@ -356,6 +418,8 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
               </Button>
             </div>
           </div>
+            </>
+          )}
 
           <div className="flex flex-col items-center gap-3 md:w-28">
             {s.phase === "revealed" ? (
@@ -392,6 +456,7 @@ function Session({ courseId, backPath, title, kind, planned, languageId, onAgain
           </div>
         </div>
       </main>
+      {choosing && <ExerciseSettingsDialog onClose={() => setChoosing(false)} />}
       {exiting && (
         <ExitDialog
           onContinue={() => setExiting(false)}
