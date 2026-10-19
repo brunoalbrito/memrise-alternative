@@ -15,3 +15,9 @@ export function resultOf(ending: "answered" | "gave_up" | "timeout", hintsUsed: 
   if (attempts > 0) return "wrong";
   return hintsUsed > 0 ? "hinted" : "correct";
 }
+
+/** Choosing is easier than typing, so a choice earns half the points (at least 1 unless the word was given up). */
+export function exercisePoints(choice: boolean, result: WordResult, hintsUsed: number): number {
+  const full = wordPoints(result, hintsUsed);
+  return choice && full > 0 ? Math.max(1, Math.ceil(full / 2)) : full;
+}

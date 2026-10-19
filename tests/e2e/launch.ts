@@ -35,3 +35,8 @@ export async function launch(
 export function cleanup(userData: string): void {
   rmSync(userData, { recursive: true, force: true });
 }
+
+/** Practice with typing only, so tests that type answers do not get a multiple-choice exercise. */
+export async function typingOnly(page: Page): Promise<void> {
+  await page.evaluate(() => (window as unknown as { api: { study: { setExerciseSettings(k: string[]): Promise<unknown> } } }).api.study.setExerciseSettings(["type"]));
+}

@@ -9,6 +9,7 @@ import { MediaError, MediaStore } from "../services/media";
 import { handleMediaProtocol, registerMediaScheme } from "./protocol";
 import { ExchangeError, importArchive, previewOf, readArchive, writeArchive, type ParsedArchive } from "../services/exchange";
 import { CsvImportSchema, importCsv, previewCsv, writeApkg } from "../services/anki";
+import { getEnabledExercises, SetExercisesSchema, setEnabledExercises } from "../services/exerciseSettings";
 import { Backups, restoreBackup } from "../services/backup";
 import { BackupConfigPatchSchema, BackupIdSchema } from "../shared/schemas";
 import { AiService } from "../services/ai/service";
@@ -34,6 +35,7 @@ let secrets: Secrets | null = null;
 let ai: AiService | null = null;
 let study: Study | null = null;
 let backups: Backups | null = null;
+let appSettings: Settings | null = null;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
 
 registerMediaScheme();
@@ -190,6 +192,11 @@ function registerIpc(): void {
     study!.markMany(input);
     return null;
   });
+  handle("study:exerciseSettings", null, () => getEnabledExercises(appSettings!));
+  handle("study:setExerciseSettings", SetExercisesSchema, ({ enabled }) => {
+    setEnabledExercises(appSettings!, enabled);
+    return null;
+  });
   handle("study:setNewPerDay", NewPerDaySchema, ({ courseId, value }) => {
     study!.setNewPerDay(courseId, value);
     return null;
@@ -277,6 +284,7 @@ function start(): void {
   study = new Study(library.db);
   study.abandonOpenSessions();
   const settings = new Settings(library.db);
+  appSettings = settings;
   secrets = new Secrets(settings, osCipher);
   ai = new AiService(secrets, settings, shrinkImage);
   backups = new Backups(

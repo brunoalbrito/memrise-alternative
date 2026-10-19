@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cleanup, launch } from "./launch";
+import { cleanup, launch, typingOnly } from "./launch";
 
 // 1x1 PNG
 const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
@@ -32,6 +32,7 @@ async function seed(page: Page) {
       ],
     });
   }, PNG_BASE64);
+  await typingOnly(page);
   await page.reload();
 }
 

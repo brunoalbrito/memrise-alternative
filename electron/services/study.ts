@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { z } from "zod";
+import { ExerciseKindSchema } from "../shared/exercises";
 import { dayKey, dayStart, ratingFor, review, wasRecalled, type Kind, type StoredCard } from "./scheduler";
 
 type Db = Database.Database;
@@ -19,6 +20,7 @@ export const OutcomeSchema = z.object({
   attempts: z.number().int().min(0).max(1000),
   elapsedMs: z.number().int().min(0).max(24 * 3600 * 1000),
   points: z.number().int().min(0).max(100),
+  exercise: ExerciseKindSchema.default("type"),
 });
 export const EndSessionSchema = z.object({
   sessionId: z.string().min(1).max(100),
@@ -26,7 +28,7 @@ export const EndSessionSchema = z.object({
 });
 
 export type StartSession = z.infer<typeof StartSessionSchema>;
-export type Outcome = z.infer<typeof OutcomeSchema>;
+export type Outcome = z.input<typeof OutcomeSchema>;
 
 export interface SessionSummary {
   sessionId: string;
@@ -69,6 +71,8 @@ export interface Plan {
   newLeft: number;
   /** When the next card falls due, if none is due now. */
   nextDueAt: string | null;
+  /** Card state of each planned word: 0 new, 1 learning, 2 review, 3 relearning. */
+  states: Record<string, number>;
 }
 
 export interface CardProgress {
@@ -161,10 +165,10 @@ export class Study {
       this.reviewCard(open.course_id, open.kind, outcome);
       this.db
         .prepare(
-          `INSERT INTO review_log (session_id, course_id, word_id, result, hints_used, attempts, elapsed_ms, points, reviewed_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO review_log (session_id, course_id, word_id, result, hints_used, attempts, elapsed_ms, points, reviewed_at, exercise)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(outcome.sessionId, open.course_id, outcome.wordId, outcome.result, outcome.hintsUsed, outcome.attempts, outcome.elapsedMs, outcome.points, this.now().toISOString());
+        .run(outcome.sessionId, open.course_id, outcome.wordId, outcome.result, outcome.hintsUsed, outcome.attempts, outcome.elapsedMs, outcome.points, this.now().toISOString(), outcome.exercise ?? "type");
       this.db
         .prepare(
           `UPDATE sessions SET correct_count = correct_count + ?, hints_total = hints_total + ?, points_total = points_total + ? WHERE id = ?`,
@@ -231,7 +235,9 @@ export class Study {
       input.kind === "learn"
         ? input.wordIds.filter(isNew).slice(0, Math.min(LEARN_SESSION_SIZE, newLeft))
         : dueRows.map((r) => r.word_id).slice(0, SESSION_LIMIT);
-    return { wordIds, dueCount: dueRows.length, newLeft, nextDueAt: dueRows.length === 0 ? (upcoming ?? null) : null };
+    const states: Record<string, number> = {};
+    for (const id of wordIds) states[id] = byId.get(id)?.state ?? 0;
+    return { wordIds, dueCount: dueRows.length, newLeft, nextDueAt: dueRows.length === 0 ? (upcoming ?? null) : null, states, };
   }
 
   /** Cards of these words, for export. */

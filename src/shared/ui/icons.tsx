@@ -117,3 +117,9 @@ export const ListIcon = (p: P) => (
 );
 export const ChevronRightIcon = (p: P) => <Icon d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" {...p} />;
 export const ChevronLeftIcon = (p: P) => <Icon d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" {...p} />;
+export const SoundIcon = (p: P) => (
+  <Icon d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" {...p} />
+);
+export const TuneIcon = (p: P) => (
+  <Icon d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" {...p} />
+);

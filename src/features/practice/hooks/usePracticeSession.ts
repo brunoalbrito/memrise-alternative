@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApi, isDesktop } from "../../../shared/api";
 import { mediaUrl } from "../../../shared/media/mediaStore";
 import { useProgressStore, type Word } from "../../home";
-import { resultOf, wordPoints, type WordResult } from "../model/points";
+import { chooseExercise, isChoiceKind, stageOf, type Exercise, type ExerciseKind, type PoolWord } from "../model/exercises";
+import { exercisePoints, resultOf, type WordResult } from "../model/points";
 import { lettersOf } from "../model/text";
 import { hashSeed, makeTiles } from "../model/tiles";
 import {
@@ -33,6 +34,14 @@ export interface Totals {
 
 const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/** What the session needs to choose exercises: the course's words (for wrong options), card states, and the kinds that are on. */
+export interface PracticeContext {
+  pool: PoolWord[];
+  /** Card state of each planned word (0 new, 1 learning, 2 review, 3 relearning). */
+  states: Record<string, number>;
+  enabled: readonly ExerciseKind[];
+}
+
 /** The accent setting of a course is not editable yet: answers must have the exact accents. */
 const RULES: Rules = { accentTolerant: false };
 
@@ -40,9 +49,28 @@ const RULES: Rules = { accentTolerant: false };
  * Runs one practice session: which word is on screen, what the learner typed, hints, feedback, points,
  * and recording every answer. Closing the screen never loses answers that were already given.
  */
-export function usePracticeSession(courseId: string, kind: PracticeKind, planned: Word[], skipped: number) {
+export function usePracticeSession(courseId: string, kind: PracticeKind, planned: Word[], skipped: number, context: PracticeContext) {
   // The list is fixed for the session even if the course is edited meanwhile.
   const [words] = useState<Word[]>(planned);
+  // Every word's exercise is chosen when the session starts, so it stays the same while the word is on screen.
+  const [exercises, setExercises] = useState<Exercise[]>(() => {
+    const salt = Date.now() % 1_000_003;
+    const levelOf = new Map(context.pool.map((p) => [p.word.id, p.levelId]));
+    return planned.map((word) =>
+      chooseExercise({
+        word,
+        levelId: levelOf.get(word.id) ?? "",
+        pool: context.pool,
+        stage: stageOf(context.states[word.id]),
+        session: kind,
+        enabled: context.enabled,
+        seed: hashSeed(word.id) ^ salt,
+      }),
+    );
+  });
+  const [wrongChoices, setWrongChoices] = useState<number[]>([]);
+  /** A recording could not be played for the word on screen. */
+  const [audioProblem, setAudioProblem] = useState(false);
   const [skips, setSkips] = useState(0);
 
   const [index, setIndex] = useState(0);
@@ -54,6 +82,8 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
   const [remainingMs, setRemainingMs] = useState(SPEED_SECONDS * 1000);
 
   const word: Word | undefined = words[index];
+  const exercise: Exercise | undefined = exercises[index];
+  const choice = exercise ? isChoiceKind(exercise.kind) : false;
   const answerLetters = useMemo(() => (word ? lettersOf(word.text) : []), [word]);
   const startedAt = useRef(Date.now());
   const sessionId = useRef<Promise<string | null> | null>(null);
@@ -73,8 +103,8 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
       .catch(() => null);
   }, [courseId, kind, words.length]);
 
-  const record = useCallback((target: Word, result: WordResult, current: WordState) => {
-    const points = wordPoints(result, current.hints);
+  const record = useCallback((target: Word, result: WordResult, current: { hints: number; attempts: number }, used: ExerciseKind) => {
+    const points = exercisePoints(isChoiceKind(used), result, current.hints);
     const ok = result !== "gave_up" && result !== "timeout";
     setTotals((t) => ({
       ...t,
@@ -90,6 +120,7 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
       attempts: current.attempts,
       elapsedMs: Math.max(0, Date.now() - startedAt.current),
       points,
+      exercise: used,
     };
     void sessionId.current?.then((id) => (id ? getApi().study.answer(id, outcome) : null)).catch(() => null);
   }, []);
@@ -111,6 +142,8 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     setIndex(index + 1);
     setState(stateFor(nextWord));
     setPhase("answering");
+    setWrongChoices([]);
+    setAudioProblem(false);
     setRemainingMs(SPEED_SECONDS * 1000);
     startedAt.current = Date.now();
     settled.current = false;
@@ -132,7 +165,7 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     if (outcome === "correct") {
       settled.current = true;
       setPhase("correct");
-      record(word, resultOf("answered", next.hints, next.attempts), next);
+      record(word, resultOf("answered", next.hints, next.attempts), next, exercise?.kind ?? "type");
       playAudio(word);
       advanceTimer.current = setTimeout(goNext, prefersReducedMotion() ? 0 : ADVANCE_DELAY_MS);
     } else if (outcome === "wrong") {
@@ -171,15 +204,31 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     if (next) afterChange(next);
   };
 
+  /** Picks option `i` of a choice exercise: the right one finishes the word, a wrong one is marked and counted. */
+  const choose = (i: number) => {
+    if (busy || !word || !exercise || !choice || wrongChoices.includes(i)) return;
+    if (i === exercise.correct) {
+      settled.current = true;
+      setPhase("correct");
+      record(word, resultOf("answered", 0, wrongChoices.length), { hints: 0, attempts: wrongChoices.length }, exercise.kind);
+      playAudio(word);
+      advanceTimer.current = setTimeout(goNext, prefersReducedMotion() ? 0 : ADVANCE_DELAY_MS);
+    } else {
+      setWrongChoices((list) => [...list, i]);
+      setPhase("wrong");
+    }
+  };
+
   const reveal = useCallback(
     (ending: "gave_up" | "timeout") => {
       if (!word || settled.current || phase === "correct" || phase === "revealed") return;
       settled.current = true;
       setPhase("revealed");
-      record(word, resultOf(ending, state.hints, state.attempts), state);
+      const stats = choice ? { hints: 0, attempts: wrongChoices.length } : state;
+      record(word, resultOf(ending, stats.hints, stats.attempts), stats, exercise?.kind ?? "type");
       playAudio(word);
     },
-    [word, phase, state, record],
+    [word, phase, state, record, choice, wrongChoices, exercise],
   );
   const giveUp = () => {
     if (!busy) reveal("gave_up");
@@ -214,6 +263,19 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
       .then(() => useProgressStore.getState().refresh());
   };
 
+  /** A recording cannot be played: use an exercise that does not need audio, if the word allows one. */
+  const audioFailed = () => {
+    setAudioProblem(true);
+    if (!word || !exercise) return;
+    const silent = context.enabled.filter((k) => k !== "audio-to-word" && k !== "word-to-audio" && k !== "audio-to-type");
+    const levelId = context.pool.find((p) => p.word.id === word.id)?.levelId ?? "";
+    const next = chooseExercise({ word, levelId, pool: context.pool, stage: stageOf(context.states[word.id]), session: kind, enabled: silent, seed: hashSeed(word.id) });
+    if (next.kind === "audio-to-type" || next.kind === exercise.kind) return;
+    setExercises((list) => list.map((e, i) => (i === index ? next : e)));
+    setState(stateFor(word));
+    setWrongChoices([]);
+  };
+
   /** Marks the current word as ignored or long-term; it is left out of this and later sessions and the session moves on. */
   const mark = (flag: "ignored" | "longTerm") => {
     if (busy || !word) return;
@@ -228,6 +290,11 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     total: words.length,
     word,
     state,
+    exercise,
+    wrongChoices,
+    choose,
+    audioFailed,
+    audioProblem,
     phase,
     finished,
     totals,
@@ -238,6 +305,7 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     display: word ? (phase === "revealed" ? word.text : displayText(state, word.text)) : "",
     letterCount: answerLetters.length,
     hasDigits: answerLetters.some((letter) => /\p{N}/u.test(letter)),
+    isChoice: choice,
     pickKey,
     pickAt,
     backspace,

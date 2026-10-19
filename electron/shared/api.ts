@@ -1,3 +1,4 @@
+import type { ExerciseKind } from "./exercises";
 import type {
   ExportItem,
   ExportOutcome,
@@ -30,6 +31,8 @@ export type AnswerResult = "correct" | "hinted" | "wrong" | "gave_up" | "timeout
 
 export interface AnswerOutcome {
   wordId: string;
+  /** Which kind of exercise produced the answer (default: typing). */
+  exercise?: ExerciseKind;
   result: AnswerResult;
   hintsUsed: number;
   attempts: number;
@@ -49,6 +52,8 @@ export type PracticeKind = SessionKind;
 
 export interface StudyPlan {
   wordIds: string[];
+  /** Card state of each planned word: 0 new, 1 learning, 2 review, 3 relearning. */
+  states: Record<string, number>;
   dueCount: number;
   newLeft: number;
   nextDueAt: string | null;
@@ -185,6 +190,9 @@ export interface MembetterApi {
     /** Sets the flag for many words at once. */
     markMany(courseId: string, wordIds: string[], flag: "ignored" | "longTerm", value: boolean): Promise<Result<null>>;
     setNewPerDay(courseId: string, value: number): Promise<Result<null>>;
+    /** Exercise types that are turned on. */
+    exerciseSettings(): Promise<Result<ExerciseKind[]>>;
+    setExerciseSettings(enabled: ExerciseKind[]): Promise<Result<null>>;
   };
   anki: {
     /** Ask where to save, then write an Anki package (.apkg) for this course. */

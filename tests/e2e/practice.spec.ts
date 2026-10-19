@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { expect, test, type Page } from "@playwright/test";
-import { cleanup, launch } from "./launch";
+import { cleanup, launch, typingOnly } from "./launch";
 
 type Api = { library: { apply(c: unknown): Promise<{ ok: boolean }> } };
 
@@ -20,6 +20,7 @@ async function seed(page: Page) {
       levels: [{ id: "l1", name: "Level 1", tested: "t", words: [w("w1", "sink", "where you wash dishes"), w("w2", "wash", "to clean with water"), w("w3", "laundry folding", "fold clean clothes"), w("w4", "no prompt", "")] }],
     });
   });
+  await typingOnly(page);
   await page.reload();
 }
 

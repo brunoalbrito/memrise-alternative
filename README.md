@@ -92,6 +92,14 @@ on disk. To remove your data as well (this cannot be undone, so use **Export all
 `~/Library/Application Support/MemBetter`, `~/Documents/MemBetter Backups` and `~/Library/Preferences/com.membetter.app.plist`.
 Saved AI keys are in the macOS Keychain under "MemBetter Safe Storage"; remove that item in Keychain Access if you want them gone.
 
+## Exercise types
+
+Practice picks an exercise for each word, like Memrise did (research: `docs/exercises/research.md`): pick the picture for a word, the word for
+a picture, the meaning for a word, the word for a meaning; listening (hear it and pick the word, pick the recording, hear it and type it);
+and typing with letter tiles. New words get easier choices, words in review get typing and listening. An exercise is only used when the
+word has what it needs (a picture, a meaning, audio) and the course has enough other words for the wrong options. Turn types on or off
+with the **Exercise types** button in the practice header (for example "No typing"); the choice applies from the next session.
+
 ## Layout
 
 ```text
