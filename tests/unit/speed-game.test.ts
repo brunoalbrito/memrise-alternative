@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   accuracy,
   applyAnswer,
+  isListening,
   isOver,
   LIFE_EVERY,
   MAX_LIVES,
   multiplierFor,
   pointsFor,
   questionSeconds,
+  rotateKinds,
+  SPEED_ORDER,
   startGame,
   type GameState,
   type MissedWord,
@@ -95,5 +98,23 @@ describe("a game", () => {
   it("computes accuracy", () => {
     expect(accuracy(startGame())).toBe(0);
     expect(accuracy(wrong(streakOf(3)).state)).toBe(75);
+  });
+});
+
+describe("question kinds", () => {
+  it("cycles through picture, recording and meaning questions, then their reverses", () => {
+    const all = [...SPEED_ORDER];
+    expect([0, 1, 2, 3, 4, 5, 6].map((i) => rotateKinds(all, i)[0])).toEqual(["image-to-word", "audio-to-word", "meaning-to-word", "word-to-image", "word-to-audio", "word-to-meaning", "image-to-word"]);
+  });
+  it("only uses kinds that are on, and keeps every one of them as a fallback", () => {
+    expect(rotateKinds(["word-to-meaning", "image-to-word", "type"], 1)).toEqual(["word-to-meaning", "image-to-word"]);
+    expect(rotateKinds(["type", "audio-to-type"], 0)).toEqual([]);
+    expect(rotateKinds(["audio-to-word"], 7)).toEqual(["audio-to-word"]);
+  });
+  it("gives questions that play a recording more time", () => {
+    expect(isListening("audio-to-word")).toBe(true);
+    expect(isListening("word-to-audio")).toBe(true);
+    expect(isListening("image-to-word")).toBe(false);
+    expect(isListening("word-to-meaning")).toBe(false);
   });
 });

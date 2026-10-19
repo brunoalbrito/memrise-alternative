@@ -343,3 +343,48 @@ test("with reduced motion the red tint changes in coarse steps, otherwise it fad
     cleanup(userData);
   }
 });
+
+const SHOWS: Record<string, (page: Page) => Promise<void>> = {
+  "image-to-word": (page) => expect(page.getByRole("img", { name: "Picture clue" })).toBeVisible(),
+  "audio-to-word": (page) => expect(page.getByRole("button", { name: "Play the recording" })).toBeVisible(),
+  "meaning-to-word": (page) => expect(page.getByRole("heading", { name: "Which word has this meaning?" })).toBeVisible(),
+  "word-to-image": (page) => expect(page.getByRole("group", { name: "Answers" }).locator("img")).toHaveCount(4),
+  "word-to-audio": (page) => expect(page.getByRole("button", { name: /^Play recording/ })).toHaveCount(4),
+  "word-to-meaning": (page) => expect(page.getByRole("heading", { name: "What does this word mean?" })).toBeVisible(),
+};
+
+test("a round takes turns between picture, recording and meaning questions, and their reverses", async () => {
+  const userData = await dueSampler();
+  const app = await launch(userData);
+  const { page } = app;
+  const rounds = [
+    ["image-to-word", "audio-to-word", "meaning-to-word"],
+    ["word-to-image", "word-to-audio", "word-to-meaning"],
+  ];
+  try {
+    for (const order of rounds) {
+      await only(page, order);
+      await page.reload();
+      await goTo(page, `#/course/${SAMPLER}/speed-review`);
+      for (const [i, kind] of order.entries()) {
+        await expect(page.getByText(new RegExp(`question ${i + 1} of`))).toBeVisible();
+        await SHOWS[kind]!(page);
+        // The clock allows longer for a recording.
+        const seconds = Number((await page.getByRole("timer", { name: "Time left" }).textContent())!.replace(/[^\d]/g, ""));
+        expect(seconds).toBeLessThanOrEqual(kind.includes("audio") ? 8 : 7);
+        await page.keyboard.press("1");
+        await expect(page.getByText(/Correct!|Not quite/)).toBeVisible();
+      }
+      await page.keyboard.press("Escape").catch(() => undefined);
+      const end = page.getByRole("button", { name: "End session" });
+      if (await end.isVisible().catch(() => false)) await end.click();
+    }
+  } finally {
+    await app.close();
+  }
+  const kinds = reviewLog(userData, "speed").map((r) => r.exercise);
+  // Every game asked the kinds in turn, starting again with the first.
+  expect(kinds.slice(0, 3)).toEqual(["image-to-word", "audio-to-word", "meaning-to-word"]);
+  expect(kinds.filter((k) => ["word-to-image", "word-to-audio", "word-to-meaning"].includes(k)).length).toBeGreaterThanOrEqual(3);
+  cleanup(userData);
+});

@@ -1,4 +1,20 @@
+import type { ExerciseKind } from "../../../../electron/shared/exercises";
+
 /** Rules of the speed review game: time per question, lives, streaks and points. */
+
+/** The choice kinds in the order a round cycles through them: picture, recording and meaning questions take turns. */
+export const SPEED_ORDER: readonly ExerciseKind[] = ["image-to-word", "audio-to-word", "meaning-to-word", "word-to-image", "word-to-audio", "word-to-meaning"];
+
+/** The kinds that are on, starting at question number `index` so the kinds take turns (a kind that cannot be asked is skipped by the caller). */
+export function rotateKinds(enabled: readonly ExerciseKind[], index: number): ExerciseKind[] {
+  const order = SPEED_ORDER.filter((k) => enabled.includes(k));
+  if (order.length === 0) return [];
+  const start = index % order.length;
+  return [...order.slice(start), ...order.slice(0, start)];
+}
+
+/** Questions that play recordings get more time. */
+export const isListening = (kind: ExerciseKind): boolean => kind === "audio-to-word" || kind === "word-to-audio";
 
 export const START_LIVES = 3;
 export const MAX_LIVES = 5;
