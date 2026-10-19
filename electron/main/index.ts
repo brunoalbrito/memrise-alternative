@@ -21,13 +21,15 @@ import { applyChange, loadLibrary, purgeTrash } from "../services/library";
 import { ExportItemSchema, ExportItemsSchema, ImportChoiceSchema, LibraryChangeSchema } from "../shared/schemas";
 import type { AppInfo, Result } from "../shared/api";
 import { setupAutoUpdate } from "./updater";
+import { dataProfile } from "./profile";
+import { seedIfEmpty } from "../services/seed";
 import { createMainWindow } from "./window";
 
-// `pnpm dev` keeps its own data folder, so development never touches the data of an installed MemBetter
-// (tests pass --user-data-dir and are left alone). `pnpm dev:reset` empties it.
-if (!app.isPackaged && !process.argv.some((arg) => arg.startsWith("--user-data-dir"))) {
-  app.setPath("userData", join(app.getPath("appData"), "MemBetter-dev"));
-}
+// Two places for data: the installed app keeps your real library; `pnpm dev` and the samples use their own folder (MemBetter-dev),
+// so sample courses can never appear in the installed app. Tests pass --user-data-dir and are left alone.
+const profile = dataProfile({ isPackaged: app.isPackaged, argv: process.argv, env: process.env });
+if (profile.appDataDir) app.setPath("appData", profile.appDataDir);
+if (profile.folderName) app.setPath("userData", join(app.getPath("appData"), profile.folderName));
 
 let library: OpenedLibrary | null = null;
 let media: MediaStore | null = null;
@@ -283,6 +285,13 @@ function start(): void {
   purgeTrash(library.db);
   media = new MediaStore(library.db, join(app.getPath("userData"), "library", "media"));
   media.collectGarbage();
+  if (profile.seedFile) {
+    try {
+      seedIfEmpty(library.db, media, profile.seedFile);
+    } catch {
+      // The sample file is optional; the library simply starts empty.
+    }
+  }
   study = new Study(library.db);
   study.abandonOpenSessions();
   const settings = new Settings(library.db);
@@ -301,7 +310,7 @@ function start(): void {
   backupTimer = setInterval(() => void backups?.runIfDue(), 60 * 60 * 1000);
   handleMediaProtocol(media);
   registerIpc();
-  createMainWindow();
+  createMainWindow(profile.title);
   setupAutoUpdate();
 }
 
@@ -329,7 +338,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     start();
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+      if (BrowserWindow.getAllWindows().length === 0) createMainWindow(profile.title);
     });
   });
 

@@ -16,14 +16,14 @@ const csp = [
   "frame-ancestors 'none'",
 ].join("; ");
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(title = "MemBetter"): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 360,
     minHeight: 480,
     show: false,
-    title: "MemBetter",
+    title,
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
@@ -35,6 +35,8 @@ export function createMainWindow(): BrowserWindow {
   });
 
   win.once("ready-to-show", () => win.show());
+  // The page title would replace a "(sample data)" mark, so keep the one given.
+  if (title !== "MemBetter") win.on("page-title-updated", (event) => event.preventDefault());
 
   // The app never needs camera, microphone, location or notifications.
   win.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
