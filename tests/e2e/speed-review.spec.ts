@@ -69,7 +69,7 @@ test("plays a speed review game: points, lives, timer, game over, personal best 
 
   const app = await launch(first.userData);
   const { page } = app;
-  let finalScore = 0;
+  let finalScore: number;
   try {
     await go(page, "#/course/custom-sp/speed-review");
     // The game screen: lives, score, streak and multiplier, time bar, question and options.
