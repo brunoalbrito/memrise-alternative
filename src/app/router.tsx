@@ -5,7 +5,7 @@ import { CourseDetailPage, LevelDetailPage } from "../features/course-detail";
 import { CreateCoursePage } from "../features/create-course";
 import { CourseEditorPage } from "../features/course-editor";
 import { ComingSoonPage, CoursePlaceholder } from "../features/placeholder";
-import { PracticePage } from "../features/practice";
+import { PracticePage, SpeedReviewPage } from "../features/practice";
 import { PrivacyPage } from "../features/privacy";
 
 // The desktop app is loaded from a file, where only hash URLs survive a reload.
@@ -29,7 +29,7 @@ export const router = createRouter([
   },
   {
     path: "/course/:id/speed-review",
-    element: <PracticePage kind="speed" />,
+    element: <SpeedReviewPage />,
   },
   {
     path: "/course/:id/learn",

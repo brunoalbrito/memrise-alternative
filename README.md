@@ -100,6 +100,14 @@ and typing with letter tiles. New words get easier choices, words in review get 
 word has what it needs (a picture, a meaning, audio) and the course has enough other words for the wrong options. Turn types on or off
 with the **Exercise types** button in the practice header (for example "No typing"); the choice applies from the next session.
 
+## Speed review
+
+Speed review (from the session picker on a course card) is a game against the clock over the words that are due, like the old Memrise
+one (research: `docs/exercises/speed-review-research.md`). Each question is multiple choice with a shrinking time bar (6 seconds, more for long
+prompts and recordings) and the screen turns red as time runs out. You have 3 lives (a wrong answer or a timeout costs one; 15 right answers in
+a row earn one back, up to 5). A right answer scores 100 plus up to 50 for speed, multiplied by your streak (x2 after 5 in a row, up to x5). The
+end screen shows the score, your best on that course and the words you missed; every answer still updates the review schedule.
+
 ## Layout
 
 ```text

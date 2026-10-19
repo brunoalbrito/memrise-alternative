@@ -21,7 +21,6 @@ import {
 export type PracticeKind = "learn" | "classic" | "speed";
 export type Phase = "answering" | "wrong" | "correct" | "revealed";
 
-export const SPEED_SECONDS = 8;
 const ADVANCE_DELAY_MS = 800;
 
 export interface Totals {
@@ -79,7 +78,6 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
   const [totals, setTotals] = useState<Totals>({ answered: 0, correct: 0, hints: 0, points: 0, skipped });
   const [finished, setFinished] = useState(false);
   const [shake, setShake] = useState(0);
-  const [remainingMs, setRemainingMs] = useState(SPEED_SECONDS * 1000);
 
   const word: Word | undefined = words[index];
   const exercise: Exercise | undefined = exercises[index];
@@ -144,7 +142,6 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     setPhase("answering");
     setWrongChoices([]);
     setAudioProblem(false);
-    setRemainingMs(SPEED_SECONDS * 1000);
     startedAt.current = Date.now();
     settled.current = false;
   }, [index, words]);
@@ -234,21 +231,6 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     if (!busy) reveal("gave_up");
   };
 
-  // Speed review: a countdown for every word.
-  useEffect(() => {
-    if (kind !== "speed" || busy) return;
-    const timer = setInterval(() => {
-      setRemainingMs((ms) => {
-        if (ms <= 100) return 0;
-        return ms - 100;
-      });
-    }, 100);
-    return () => clearInterval(timer);
-  }, [kind, busy, phase, index]);
-  useEffect(() => {
-    if (kind === "speed" && remainingMs === 0 && !busy) reveal("timeout");
-  }, [kind, remainingMs, busy, reveal]);
-
   useEffect(() => () => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
   }, []);
@@ -301,7 +283,6 @@ export function usePracticeSession(courseId: string, kind: PracticeKind, planned
     done: totals.answered + skips,
     mark,
     shake,
-    remainingMs,
     display: word ? (phase === "revealed" ? word.text : displayText(state, word.text)) : "",
     letterCount: answerLetters.length,
     hasDigits: answerLetters.some((letter) => /\p{N}/u.test(letter)),
