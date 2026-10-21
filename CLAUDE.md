@@ -61,9 +61,23 @@ Sample course file (`dev-data/sample-courses.membetter`) is ignored by git and o
 
 - ESLint: standard config (no custom rules beyond react-hooks, typescript-eslint)
 - No formatter configured (Prettier, Biome, etc.)
-- Conventional commits (feat:, fix:, test:, etc.)
 - Branches: feature/ or bugfix/ prefix
 
+## Git Workflow
+
+**Speckit-only enforcement**: All commits must be made via speckit workflows. Commit messages must start with `speckit:` or `[speckit]`.
+
+Valid workflow:
+- Use `/speckit-implement`, `/speckit-plan`, `/speckit-specify`, `/speckit-analyze`, etc.
+- Commit message format: `speckit: <change description>`
+- Example: `speckit: Add dark mode toggle to settings`
+
+Enforcement:
+- Local commit-msg hook (`.githooks/commit-msg`) blocks non-speckit commits
+- Hook auto-installed on first run; `git config core.hooksPath .githooks` enables it
+- To re-run setup: `git config core.hooksPath .githooks`
+
+**Main branch protection**: No direct commits to main (requires PR). Use speckit workflow on feature branch, then PR to main.
 ## CI
 
 GitHub Actions runs on macOS, Linux, Windows (multiplatform matrix). Checks: typecheck → lint → test → build → e2e (Linux uses xvfb for virtual display).
