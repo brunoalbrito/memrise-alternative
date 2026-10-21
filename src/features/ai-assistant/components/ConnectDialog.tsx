@@ -19,20 +19,14 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const weakProtection = useAiStore((state) => state.weakProtection);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
-  const pollinationsConnected = useAiStore((state) => state.pollinationsConnected);
-  const pollinationsLast4 = useAiStore((state) => state.pollinationsLast4);
-  const pollinationsModel = useAiStore((state) => state.pollinationsModel);
+  const imageModel = useAiStore((state) => state.imageModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
-  const [imageInput, setImageInput] = useState(pollinationsModel);
-  const [pKeyInput, setPKeyInput] = useState("");
-  const [pKeyError, setPKeyError] = useState("");
-  const [pStatus, setPStatus] = useState("");
-  const [confirmingRemovePollinations, setConfirmingRemovePollinations] = useState(false);
+  const [imageInput, setImageInput] = useState(imageModel);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -77,10 +71,9 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         for a word.
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
-        The word and the course language are sent to Google for text and audio. The word and the
-        sentence you choose are sent to Pollinations to create the picture. Your keys are stored
-        encrypted by your computer's protected storage, are only used by the app to call these services,
-        and are never shown again. Use keys with spending limits.
+        Auto-fill uses a single Google AI Studio API key to prepare a definition, example sentences, IPA,
+        audio, and picture for a word. Your key is stored encrypted by your computer's protected storage,
+        is only used by the app to call Google services, and is never shown again. Use keys with spending limits.
       </p>
       <p className="mt-2 text-body-medium">
         <a
@@ -158,85 +151,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         </div>
       )}
 
-      <div className="mt-6 border-t border-outline-variant pt-4">
-        <label htmlFor="pollinations-key" className="text-label-large font-medium">
-          Pollinations API key (for images)
-        </label>
-        <input
-          id="pollinations-key"
-          type="password"
-          autoComplete="off"
-          value={pKeyInput}
-          onChange={(event) => {
-            setPKeyInput(event.target.value);
-            setPKeyError("");
-          }}
-          aria-invalid={pKeyError ? true : undefined}
-          aria-describedby="pollinations-key-help"
-          className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
-        />
-        <p id="pollinations-key-help" className="mt-1 text-body-medium text-on-surface-variant">
-          {pollinationsConnected ? `Saved key: ${maskKey(pollinationsLast4)}` : "No key saved."}
-        </p>
-        {pKeyError && <p className="mt-1 text-body-medium text-error">{pKeyError}</p>}
-        <p aria-live="polite" className="mt-2 min-h-6 text-body-medium text-on-surface">
-          {pStatus}
-        </p>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <Button
-            variant="filled"
-            onClick={() => {
-              void useAiStore
-                .getState()
-                .saveKey("pollinations", pKeyInput)
-                .then((problem) => {
-                  if (problem) {
-                    setPKeyError(problem);
-                    return;
-                  }
-                  setPKeyError("");
-                  setPKeyInput("");
-                  setPStatus("Pollinations connected.");
-                });
-            }}
-          >
-            Save
-          </Button>
-          <Button
-            variant="text"
-            disabled={!pollinationsConnected}
-            onClick={() => setConfirmingRemovePollinations(true)}
-          >
-            Remove key
-          </Button>
-        </div>
-        {confirmingRemovePollinations && (
-          <div
-            className="mt-3 rounded-m3-md bg-surface-container p-3"
-            role="group"
-            aria-label="Remove Pollinations key"
-          >
-            <p className="text-body-medium">Remove the key from this device?</p>
-            <div className="mt-2 flex gap-2">
-              <Button
-                variant="text"
-                onClick={() => {
-                  void useAiStore.getState().removeKey("pollinations");
-                  setConfirmingRemovePollinations(false);
-                  setPStatus("Key removed.");
-                }}
-              >
-                Remove
-              </Button>
-              <Button variant="text" onClick={() => setConfirmingRemovePollinations(false)}>
-                Keep
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <details className="mt-4">
+      <details className="mt-6 border-t border-outline-variant pt-4">
         <summary className="cursor-pointer text-label-large font-medium">Models</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div>
@@ -263,7 +178,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           </div>
           <div>
             <label htmlFor="ai-image-model" className="text-label-large font-medium">
-              Image model (Pollinations, optional)
+              Image model
             </label>
             <input
               id="ai-image-model"
@@ -295,7 +210,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
                   .getState()
                   .restoreModels()
                   .then(() => {
-                    const { textModel: text, speechModel: speech, pollinationsModel: image } =
+                    const { textModel: text, speechModel: speech, imageModel: image } =
                       useAiStore.getState();
                     setTextInput(text);
                     setSpeechInput(speech);

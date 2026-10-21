@@ -12,7 +12,6 @@ import { Secrets, SecretsUnavailableError, type Cipher } from "../../electron/se
 import { Settings } from "../../electron/services/settings";
 
 const KEY = "AIzaSy-super-secret-1234";
-const PKEY = "sk_pollinations_5678";
 
 /** Reversible fake: not real encryption, but the stored text must never equal the key. */
 const fakeCipher = (available = true, weak = false): Cipher => ({
@@ -68,12 +67,10 @@ describe("Secrets", () => {
 });
 
 type Call = { url: string; init: RequestInit };
-function service(handler: (call: Call) => Response | Promise<Response>, opts: { google?: boolean; pollinations?: boolean } = {}) {
+function service(handler: (call: Call) => Response | Promise<Response>, opts: { google?: boolean } = {}) {
   const secrets = new Secrets(settings, fakeCipher());
   if (opts.google !== false) secrets.save("google", KEY);
   else secrets.remove("google");
-  if (opts.pollinations !== false) secrets.save("pollinations", PKEY);
-  else secrets.remove("pollinations");
   const calls: Call[] = [];
   const fetchFake = (async (url: string | URL | Request, init?: RequestInit) => {
     const call = { url: String(url), init: init ?? {} };
@@ -134,40 +131,50 @@ describe("AiService", () => {
     await expect(failing.ai.wordAudio("sink")).rejects.toMatchObject({ kind: "audio" });
   });
 
-  it("draws an image with the Pollinations key in a header, describing the scene first", async () => {
+  it("draws an image with the Google key in query param, describing the scene first", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const base64Jpeg = Buffer.from(jpeg).toString("base64");
     const { ai, calls } = service((call) =>
-      call.url.startsWith("https://gen.pollinations.ai")
-        ? new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } })
+      call.url.includes(":generateContent")
+        ? json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/jpeg", data: base64Jpeg } }] } }] }, 200)
         : json({ output_text: "A person washing a plate at a kitchen sink." }),
     );
     const bytes = await ai.wordImage("sink", "I wash the plate in the sink.");
     expect(bytes).toEqual(jpeg);
-    const draw = calls.find((c) => c.url.startsWith("https://gen.pollinations.ai"))!;
-    expect((draw.init.headers as Record<string, string>)["Authorization"]).toBe(`Bearer ${PKEY}`);
-    expect(draw.url).not.toContain(PKEY);
-    expect(decodeURIComponent(draw.url)).toContain("A person washing a plate");
-    expect(decodeURIComponent(draw.url)).toContain("no text of any kind");
-    expect(decodeURIComponent(draw.url)).not.toContain("I wash the plate"); // the learner's sentence is never quoted
+    const draw = calls.find((c) => c.url.includes(":generateContent"))!;
+    expect(draw.url).toContain(`key=${KEY}`);
+    expect(draw.url).not.toContain("Authorization");
+    const body = JSON.parse(String(draw.init.body)) as { contents: unknown[] };
+    expect(JSON.stringify(body)).toContain("A person washing a plate");
+    expect(JSON.stringify(body)).toContain("no text of any kind");
+    expect(JSON.stringify(body)).not.toContain("I wash the plate"); // the learner's sentence is never quoted
   });
 
   it("falls back to a scene from the sentence when the description fails, and maps image errors", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 1]);
-    const ok = service((call) => (call.url.startsWith("https://gen.pollinations.ai") ? new Response(jpeg, { headers: { "content-type": "image/jpeg" } }) : json({}, 500)));
+    const base64Jpeg = Buffer.from(jpeg).toString("base64");
+    const ok = service((call) =>
+      call.url.includes(":generateContent")
+        ? json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/jpeg", data: base64Jpeg } }] } }] })
+        : json({}, 500),
+    );
     expect(await ok.ai.wordImage("sink", "He said \"hello\".")).toEqual(jpeg);
-    expect(decodeURIComponent(ok.calls.at(-1)!.url)).toContain("Illustrate a scene in which He said hello.");
-    for (const [status, kind] of [[401, "image-key"], [402, "image-credit"], [429, "limit"], [500, "image"]] as const) {
-      const s = service((call) => (call.url.startsWith("https://gen.pollinations.ai") ? new Response("x", { status }) : json({ output_text: "scene" })));
+    const body = JSON.parse(String(ok.calls.at(-1)!.init.body)) as { contents: unknown[] };
+    expect(JSON.stringify(body)).toContain("Illustrate a scene in which He said hello.");
+    for (const [status, kind] of [[401, "image-key"], [403, "image-key"], [429, "limit"], [500, "image"]] as const) {
+      const s = service((call) =>
+        call.url.includes(":generateContent") ? new Response("x", { status }) : json({ output_text: "scene" }),
+      );
       expect(await s.ai.wordImage("a", "b").catch((e: AiError) => e.kind)).toBe(kind);
     }
-    expect(await service(() => json({}), { pollinations: false }).ai.wordImage("a", "b").catch((e: AiError) => e.kind)).toBe("image-no-key");
+    expect(await service(() => json({}), { google: false }).ai.wordImage("a", "b").catch((e: AiError) => e.kind)).toBe("image-no-key");
   });
 
   it("keeps editable model names and restores the defaults", () => {
     const { ai } = service(() => json({}));
-    expect(ai.models()).toEqual({ textModel: DEFAULT_TEXT_MODEL, speechModel: "gemini-3.8-flash-tts", pollinationsModel: "" });
-    ai.setModels({ textModel: "t", speechModel: "s", pollinationsModel: "p" });
-    expect(ai.models()).toEqual({ textModel: "t", speechModel: "s", pollinationsModel: "p" });
+    expect(ai.models()).toEqual({ textModel: DEFAULT_TEXT_MODEL, speechModel: "gemini-3.8-flash-tts", imageModel: "" });
+    ai.setModels({ textModel: "t", speechModel: "s", imageModel: "i" });
+    expect(ai.models()).toEqual({ textModel: "t", speechModel: "s", imageModel: "i" });
     expect(ai.restoreModels().textModel).toBe(DEFAULT_TEXT_MODEL);
   });
 });

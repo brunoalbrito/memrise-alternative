@@ -12,17 +12,15 @@ interface AiState {
   ready: boolean;
   googleConnected: boolean;
   googleLast4: string;
-  pollinationsConnected: boolean;
-  pollinationsLast4: string;
   textModel: string;
   speechModel: string;
-  pollinationsModel: string;
+  imageModel: string;
   /** The operating system offers only weak protection for saved keys. */
   weakProtection: boolean;
   hydrate: () => Promise<void>;
-  saveKey: (provider: "google" | "pollinations", key: string) => Promise<string | null>;
-  removeKey: (provider: "google" | "pollinations") => Promise<void>;
-  setModels: (textModel: string, speechModel: string, pollinationsModel: string) => Promise<string | null>;
+  saveKey: (provider: "google", key: string) => Promise<string | null>;
+  removeKey: (provider: "google") => Promise<void>;
+  setModels: (textModel: string, speechModel: string, imageModel: string) => Promise<string | null>;
   restoreModels: () => Promise<void>;
 }
 
@@ -33,23 +31,19 @@ export const useAiStore = create<AiState>()((set, get) => ({
   ready: !isDesktop(),
   googleConnected: false,
   googleLast4: "",
-  pollinationsConnected: false,
-  pollinationsLast4: "",
   textModel: DEFAULT_TEXT_MODEL,
   speechModel: DEFAULT_SPEECH_MODEL,
-  pollinationsModel: "",
+  imageModel: "",
   weakProtection: false,
   hydrate: async () => {
     if (!isDesktop()) return;
     const result = await getApi().ai.status();
     if (!result.ok) return;
-    const { google, pollinations, models, weakProtection } = result.data;
+    const { google, models, weakProtection } = result.data;
     set({
       ready: true,
       googleConnected: google.connected,
       googleLast4: google.last4,
-      pollinationsConnected: pollinations.connected,
-      pollinationsLast4: pollinations.last4,
       weakProtection,
       ...models,
     });
@@ -66,11 +60,11 @@ export const useAiStore = create<AiState>()((set, get) => ({
     await getApi().ai.removeKey(provider);
     await get().hydrate();
   },
-  setModels: async (textModel, speechModel, pollinationsModel) => {
+  setModels: async (textModel, speechModel, imageModel) => {
     if (!isDesktop()) return UNAVAILABLE;
-    const result = await getApi().ai.setModels({ textModel, speechModel, pollinationsModel });
+    const result = await getApi().ai.setModels({ textModel, speechModel, imageModel });
     const message = error(result);
-    if (message === null) set({ textModel, speechModel, pollinationsModel });
+    if (message === null) set({ textModel, speechModel, imageModel });
     return message;
   },
   restoreModels: async () => {

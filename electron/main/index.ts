@@ -70,11 +70,11 @@ function openFileInRenderer(path: string): void {
   else pendingOpenFile = path;
 }
 
-const ProviderSchema = z.enum(["google", "pollinations"]);
+const ProviderSchema = z.enum(["google"]);
 const KeySchema = z.object({ provider: ProviderSchema, key: z.string().trim().min(1).max(500).regex(/^\S+$/, "Enter your API key without spaces.") });
 const ProviderOnlySchema = z.object({ provider: ProviderSchema });
 const modelName = z.string().trim().max(200).regex(/^\S*$/, "Enter model names without spaces.");
-const ModelsSchema = z.object({ textModel: modelName.min(1), speechModel: modelName.min(1), pollinationsModel: modelName });
+const ModelsSchema = z.object({ textModel: modelName.min(1), speechModel: modelName.min(1), imageModel: modelName });
 const WordTextSchema = z.object({ word: z.string().trim().min(1).max(200), languageName: z.string().trim().min(1).max(100) });
 const WordOnlySchema = z.object({ word: z.string().trim().min(1).max(200) });
 const WordImageSchema = z.object({ word: z.string().trim().min(1).max(200), sentence: z.string().trim().min(1).max(1000) });
@@ -157,7 +157,6 @@ function registerIpc(): void {
   });
   handle("ai:status", null, () => ({
     google: secrets!.status("google"),
-    pollinations: secrets!.status("pollinations"),
     models: ai!.models(),
     weakProtection: secrets!.weakProtection(),
   }));

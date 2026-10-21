@@ -1,6 +1,6 @@
 import type { Settings } from "./settings";
 
-export type Provider = "google" | "pollinations";
+export type Provider = "google" | "nanoBanana";
 
 /** Encrypts with the operating system's protected storage (Electron `safeStorage` in the app). */
 export interface Cipher {

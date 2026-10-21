@@ -9,12 +9,11 @@ import type {
   LibrarySnapshot,
 } from "./schemas";
 
-export type AiProvider = "google" | "pollinations";
+export type AiProvider = "google";
 
 export interface AiStatus {
   google: { connected: boolean; last4: string };
-  pollinations: { connected: boolean; last4: string };
-  models: { textModel: string; speechModel: string; pollinationsModel: string };
+  models: { textModel: string; speechModel: string; imageModel: string };
   /** The operating system only offers weak protection for saved keys. */
   weakProtection: boolean;
 }
