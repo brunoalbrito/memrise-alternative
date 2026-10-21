@@ -1,92 +1,125 @@
-# Feature Specification: Replace Pollinations with Google Gemini for Image Generation
+# Feature Specification: Single Google API Key with Flexible Model Selection
 
 **Feature Branch**: `036-nano-banana-image-provider`
 
 **Created**: 2026-10-21
 
-**Status**: Draft
+**Status**: Complete
 
-**Input**: User request: "Replace Pollinations with a single Google API key for all purposes"
-
-## User Scenarios & Testing *(mandatory)*
-
-### User Story 1 - Migrate image provider from Pollinations to Google Gemini (Priority: P1)
-
-The learner's saved Pollinations key and settings are migrated to Google Gemini. From then on, the picture in the AI suggestions panel is created by Google Gemini instead of Pollinations, for the sentence selected, and everything else about the picture stays the same: it follows the selected sentence, shows which sentence it was made for, can be replaced with "New image", and is attached to the word's Images when the learner presses "Apply". The definition, sentences, IPA and audio keep coming from Google.
-
-**Why this priority**: Ensuring image generation continues to work after replacing the provider is critical.
-
-**Independent Test**: With Google Gemini configured, press Auto-fill on a word, wait for the picture, press Apply, and verify one image is attached and survives a reload. Confirm no image request goes to Pollinations.
-
-**Acceptance Scenarios**:
-
-1. **Given** a Google Gemini key and ready suggestions, **When** the Image section starts, **Then** "Creating image…" is shown and then a picture that depicts the selected sentence with the caption "Made for: "…"".
-2. **Given** a picture is shown, **When** the learner selects another sentence or presses "New image", **Then** a new picture is created for the selected sentence, as before.
-3. **Given** the picture is ready, **When** the learner presses Apply, **Then** it is attached to the word's Images as before (same size and count limits).
-4. **Given** an existing Pollinations key on the device, **When** the app first runs after the migration, **Then** the migration helper offers to transition the configuration to Google Gemini, or the key is cleared and the learner sets up Google Gemini.
-5. **Given** a picture request, **When** it is made, **Then** it goes only to Google Gemini and the Google key is not sent to the image provider; the image provider key is not sent to Google.
+**Summary**: Replace Pollinations image generation with Google Gemini using a single Google API key for text, audio, and image generation. Support flexible model selection for all three services.
 
 ---
 
-### User Story 2 - Use a single Google API key with flexible model selection (Priority: P1)
+## User Scenarios & Testing
 
-The "Connect AI" dialog uses a single Google AI Studio API key for text, audio, and image generation. The learner pastes and saves the key, sees it masked (last 4 characters), and can remove it. An optional "Image model" field allows selecting a specific Gemini image model; left empty, the provider's default is used.
+### User Story 1 - Unified API key management (Priority: P1)
 
-**Why this priority**: Simplifying to a single key reduces configuration complexity. Model flexibility allows users to tune performance vs. quality trade-offs.
+The learner configures a single Google AI Studio API key in the "Connect AI" dialog that powers text generation, audio generation, and image generation. No separate image provider key is needed.
 
-**Independent Test**: Save a Google API key, set text/audio/image models, verify text/audio/image generation all use the same key with specified models, reload and see settings persist, remove key and see Auto-fill ask for it again.
+**Why this priority**: Reduces configuration burden and simplifies key management.
+
+**Independent Test**: Save a single Google API key, verify Auto-fill generates text/audio/images using the same key, remove the key and verify all services request it again.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Connect AI dialog, **When** it opens, **Then** it shows a single "Google AI Studio API key" section that handles text, audio, and image generation. Under Models, it shows editable "Text model", "Speech model", and "Image model" fields.
-2. **Given** a key typed in, **When** the learner saves it, **Then** it is stored on the device, "AI connected." is shown and the input empties; the key is shown only masked afterward.
-3. **Given** an empty key or a key with spaces, **When** the learner saves, **Then** "Enter your API key without spaces." is shown and nothing is saved.
-4. **Given** a saved key, **When** the learner removes it and confirms, **Then** it is deleted from the device and Auto-fill is disabled until a new key is configured.
-5. **Given** the "Image model" field, **When** the learner leaves it empty, **Then** Gemini's default image model is used; when filled, that model name is sent to the API.
-6. **Given** model settings, **When** the learner presses "Save models", **Then** they are stored and used for all subsequent text, audio, and image generation requests.
-7. **Given** earlier saved settings with separate Pollinations and Google keys, **When** the app starts, **Then** only the Google key is retained and Pollinations settings are cleared.
+1. **Given** the Connect AI dialog, **When** opened, **Then** shows one "Google AI Studio API key" input that serves text, audio, and image generation.
+2. **Given** a key is entered and saved, **When** later viewing the status, **Then** it shows as connected (masked last 4 chars) and Auto-fill enables text, audio, and image generation.
+3. **Given** a saved key, **When** removed, **Then** all Auto-fill features (text, audio, image) ask for a key on next use.
+4. **Given** the app restarts, **When** loaded, **Then** previously saved key is still available and no re-authentication is needed.
 
 ---
 
-### User Story 3 - API contract compliance (Priority: P2)
+### User Story 2 - Flexible model selection for all services (Priority: P1)
 
-The Google Gemini image generation request respects the provider's API contract: correct endpoint, correct payload format, correct model names, correct authentication method, and correct image output handling.
+The learner can customize which AI models are used for text generation, audio generation, and image generation. Each model choice is optional; empty fields use the provider's default.
 
-**Why this priority**: Ensuring correct API integration prevents image generation failures.
+**Why this priority**: Users can optimize quality vs. performance trade-offs for each service independently.
 
-**Independent Test**: Generate an image with Google Gemini and verify the network request uses correct endpoint, authentication, and payload format.
+**Independent Test**: Set custom models for text/audio/image, save them, reload app and verify models persist; generate content using each and verify correct models are called.
 
 **Acceptance Scenarios**:
 
-1. **Given** image generation request, **When** sent to Google Gemini, **Then** it uses the correct endpoint and HTTP method.
-2. **Given** authentication, **When** sending the request, **Then** API key is passed in query parameter with correct format.
-3. **Given** image request payload, **When** constructed, **Then** it includes the correct parameter names (prompt, generationConfig, etc.) matching Google Gemini API.
-4. **Given** image response, **When** received, **Then** the app correctly extracts and displays the base64-encoded image data.
+1. **Given** the Models section in Connect AI dialog, **When** expanded, **Then** shows three editable fields: "Text model", "Speech model", "Image model".
+2. **Given** model names entered, **When** "Save models" is pressed, **Then** models are stored and used for all subsequent requests.
+3. **Given** no model name (empty field), **When** content is generated, **Then** the provider's default model is used.
+4. **Given** stored models, **When** "Restore defaults" is clicked, **Then** all model names revert to empty (using provider defaults).
+5. **Given** app restart, **When** loaded, **Then** previously set model names are still in effect.
+
+---
+
+### User Story 3 - Image generation using Gemini API (Priority: P1)
+
+Image generation is now powered by Google Gemini (gemini-3.1-flash-lite-image model) instead of Pollinations. Uses the same Google API key as text and audio, eliminating separate image provider authentication.
+
+**Why this priority**: Eliminates dependency on Pollinations and consolidates all AI features under one provider.
+
+**Independent Test**: With Google key configured, press Auto-fill on a word, verify image is generated using Gemini endpoint (not Pollinations), image displays correctly, and can be applied to word.
+
+**Acceptance Scenarios**:
+
+1. **Given** Auto-fill in progress with a Google key saved, **When** the Image section loads, **Then** image is generated using Google Gemini API.
+2. **Given** an image displayed, **When** "New image" is pressed, **Then** a fresh image is generated for the selected sentence using Gemini.
+3. **Given** image ready, **When** "Apply" is pressed, **Then** image is attached to the word exactly as with previous provider (size/count limits unchanged).
+4. **Given** no image key configured separately, **When** Auto-fill starts, **Then** same Google key is automatically used for image generation (no separate auth step).
+
+---
+
+## Functional Requirements
+
+1. **Single Key Storage**: The app accepts one Google API key in the Connect AI dialog. This key is encrypted on disk and used for all AI services (text, audio, image generation).
+
+2. **Model Configuration**: Users can specify optional model names for text, speech, and image generation. Empty model fields trigger use of provider defaults.
+
+3. **Models Persistence**: Model selections are saved to app settings and persist across restarts. Users can reset to defaults via "Restore defaults" button.
+
+4. **Image Generation via Gemini**: All image generation requests go to Google Gemini (gemini-3.1-flash-lite-image endpoint) using the same Google API key, not a separate provider.
+
+5. **Backward Compatibility**: If the app detects old Pollinations configuration on startup, it is cleared automatically and users are prompted to set up the new Google key.
+
+6. **Key Management**: Users can view the saved key status (last 4 characters only), save a new key, and remove the key entirely.
+
+---
+
+## Success Criteria
+
+1. **User Experience**: Users configure only one API key for all AI services (text, audio, image generation).
+2. **Model Flexibility**: Users can independently choose models for text, audio, and image generation without affecting other services.
+3. **Reliability**: Image generation never requests a separate key; it uses the configured Google key automatically.
+4. **Performance**: Model switching has no noticeable latency impact; changes apply immediately on next request.
+5. **Data Persistence**: Model choices and key status survive app restarts without re-configuration.
+
+---
+
+## Key Entities
+
+- **Google API Key**: Single credential that authenticates text, audio, and image generation requests
+- **Model Names**: Three optional strings (text_model, speech_model, image_model) stored in app settings
+- **AI Status**: Current connection state (connected yes/no) and key's last 4 characters for display
+
+---
+
+## Assumptions
+
+1. Users have a single Google AI Studio account providing access to text, audio, and image APIs.
+2. Gemini image model (gemini-3.1-flash-lite-image) is stable and available.
+3. Users can manage model names manually if switching between different Gemini variants.
+4. Rate limits (100 req/min, 10 concurrent max) are sufficient for typical user workloads.
+5. Base64-encoded JPEG responses from Gemini are fully supported by the image display pipeline.
 
 ---
 
 ## Out of Scope
 
-- Removing Pollinations-related code entirely (kept for backwards compatibility or gradual rollout)
-- Supporting multiple image providers simultaneously
-- Changing image generation UI or UX
-- Modifying Google AI integration
+- Multiple API keys for different services
+- Other image providers (Pollinations removed entirely)
+- Real-time model availability checking or fallback providers
+- Automatic model recommendation based on workload
+- API key validation before saving
 
 ---
 
-## Technical Context
+## Notes
 
-**Implementation Details**:
-- Uses Google Gemini API (gemini-3.1-flash-lite-image model)
-- Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent`
-- Authentication: API key passed as query parameter
-- Image format: Base64-encoded JPEG response
-- Fixed resolution: 1024×1024 pixels (aspect ratio configurable)
-- Rate limits: 100 requests/minute, 10 concurrent max
-- Performance: ~4 seconds per image
-
-**Related files**:
-- `src/features/ai-assistant/store/aiStore.ts` - AI provider state
-- `src/features/ai-assistant/components/ConnectDialog.tsx` - API key UI
-- `src/features/ai-assistant/hooks/useSuggestions.ts` - Image generation logic
-- `src/main/backend/api/index.ts` - Backend API routes
+- Migration from old Pollinations setup happens silently on app startup
+- No UI warning shown when old keys are cleared (assumed acceptable)
+- Image model field is optional; users can omit it safely
