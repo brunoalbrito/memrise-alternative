@@ -1,0 +1,34 @@
+#!/bin/bash
+# commit-msg hook: Only allow commits from speckit workflows or with speckit: marker
+
+COMMIT_MSG=$(cat "$1")
+
+# Allow if commit message starts with speckit: or contains [speckit]
+if echo "$COMMIT_MSG" | grep -qE '^speckit:|^\[speckit\]|^.*speckit: ' 2>/dev/null; then
+  exit 0
+fi
+
+# Allow if automated by speckit env var
+if [ -n "$SPECKIT_COMMIT" ] || [ -n "$SPECKIT_WORKFLOW" ]; then
+  exit 0
+fi
+
+# Reject otherwise
+cat >&2 << 'EOF'
+❌ Commit blocked: speckit-only workflow enforced.
+
+Requirement: Commit message must start with 'speckit:' or '[speckit]'
+
+Examples:
+  speckit: Update feature X
+  [speckit] Refactor module Y
+  speckit: Add tests for Z
+
+Use speckit skills to make changes:
+  /speckit-implement <task>
+  /speckit-plan <objective>
+  /speckit-specify <requirement>
+  /speckit-analyze <question>
+
+EOF
+exit 1
