@@ -78,7 +78,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
         The word and the course language are sent to Google for text and audio. The word and the
-        sentence you choose are sent to Pollinations to create the picture. Your keys are stored
+        sentence you choose are sent to Google Gemini to create the picture. Your keys are stored
         encrypted by your computer's protected storage, are only used by the app to call these services,
         and are never shown again. Use keys with spending limits.
       </p>
@@ -159,11 +159,11 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
       )}
 
       <div className="mt-6 border-t border-outline-variant pt-4">
-        <label htmlFor="pollinations-key" className="text-label-large font-medium">
-          Pollinations API key (for images)
+        <label htmlFor="nano-banana-key" className="text-label-large font-medium">
+          Google Gemini API key (for images)
         </label>
         <input
-          id="pollinations-key"
+          id="nano-banana-key"
           type="password"
           autoComplete="off"
           value={pKeyInput}
@@ -172,7 +172,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
             setPKeyError("");
           }}
           aria-invalid={pKeyError ? true : undefined}
-          aria-describedby="pollinations-key-help"
+          aria-describedby="nano-banana-key-help"
           className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
         />
         <p id="nano-banana-key-help" className="mt-1 text-body-medium text-on-surface-variant">
@@ -263,7 +263,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           </div>
           <div>
             <label htmlFor="ai-image-model" className="text-label-large font-medium">
-              Image model (Pollinations, optional)
+              Image model (Gemini, optional)
             </label>
             <input
               id="ai-image-model"
