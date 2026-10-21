@@ -8,7 +8,7 @@ export function encryptKey(plaintext: string): string {
     const encrypted = safeStorage.encryptString(plaintext);
     return encrypted.toString("base64");
   } catch (err) {
-    throw new Error(`Failed to encrypt API key: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to encrypt API key: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
 }
 
@@ -20,7 +20,7 @@ export function decryptKey(encrypted: string): string {
     const buffer = Buffer.from(encrypted, "base64");
     return safeStorage.decryptString(buffer);
   } catch (err) {
-    throw new Error(`Failed to decrypt API key: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to decrypt API key: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
 }
 
