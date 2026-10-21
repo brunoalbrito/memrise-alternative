@@ -228,7 +228,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               >
                 Remove
               </Button>
-              <Button variant="text" onClick={() => setConfirmingRemovePollinations(false)}>
+              <Button variant="text" onClick={() => setConfirmingRemoveNanoBanana(false)}>
                 Keep
               </Button>
             </div>

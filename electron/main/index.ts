@@ -70,11 +70,11 @@ function openFileInRenderer(path: string): void {
   else pendingOpenFile = path;
 }
 
-const ProviderSchema = z.enum(["google", "pollinations"]);
+const ProviderSchema = z.enum(["google", "nanoBanana"]);
 const KeySchema = z.object({ provider: ProviderSchema, key: z.string().trim().min(1).max(500).regex(/^\S+$/, "Enter your API key without spaces.") });
 const ProviderOnlySchema = z.object({ provider: ProviderSchema });
 const modelName = z.string().trim().max(200).regex(/^\S*$/, "Enter model names without spaces.");
-const ModelsSchema = z.object({ textModel: modelName.min(1), speechModel: modelName.min(1), pollinationsModel: modelName });
+const ModelsSchema = z.object({ textModel: modelName.min(1), speechModel: modelName.min(1), nanoBananaModel: modelName });
 const WordTextSchema = z.object({ word: z.string().trim().min(1).max(200), languageName: z.string().trim().min(1).max(100) });
 const WordOnlySchema = z.object({ word: z.string().trim().min(1).max(200) });
 const WordImageSchema = z.object({ word: z.string().trim().min(1).max(200), sentence: z.string().trim().min(1).max(1000) });
@@ -297,10 +297,6 @@ function start(): void {
   const settings = new Settings(library.db);
   appSettings = settings;
   secrets = new Secrets(settings, osCipher);
-  // Migration: clear old Pollinations key on startup
-  if (secrets.status("pollinations").connected) {
-    secrets.remove("pollinations");
-  }
   ai = new AiService(secrets, settings, shrinkImage);
   backups = new Backups(
     library.db,

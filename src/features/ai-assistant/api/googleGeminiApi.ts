@@ -85,7 +85,7 @@ export async function generateImageWithGemini(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      await response.json().catch(() => ({}));
       console.error("[Gemini] API error", {
         status: response.status,
         statusText: response.statusText,

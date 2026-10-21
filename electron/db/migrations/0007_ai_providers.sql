@@ -5,7 +5,7 @@ CREATE TABLE ai_provider_configs (
   api_key_encrypted TEXT NOT NULL,
   last_4 TEXT NOT NULL,
   model_name TEXT,
-  connected BOOLEAN DEFAULT 0,
+  connected INTEGER DEFAULT 0,
   created_at TEXT,
   updated_at TEXT
 ) STRICT;

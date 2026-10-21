@@ -86,7 +86,7 @@ describe("creating backups", () => {
       decrypt: (d) => new TextDecoder().decode(d).slice(4),
     });
     secrets.save("google", KEY);
-    secrets.save("pollinations", "pollinations-secret-0002");
+    secrets.save("nanoBanana", "nanoBanana-secret-0002");
     settings.set("ai.textModel", "my-model");
     const stored = settings.get("ai.googleKey.enc")!;
     const entry = await backups.create();

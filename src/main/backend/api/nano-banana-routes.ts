@@ -6,20 +6,6 @@ export interface AiConfig {
   nanoBananaModel: string;
 }
 
-interface SaveKeyPayload {
-  provider: "nanoBanana" | "google";
-  key: string;
-}
-
-interface RemoveKeyPayload {
-  provider: "nanoBanana" | "google";
-}
-
-interface SetModelsPayload {
-  textModel: string;
-  speechModel: string;
-  nanoBananaModel: string;
-}
 
 /**
  * Get current AI provider configuration (status).
@@ -139,27 +125,6 @@ export function removeNanoBananaKey(db: any): { success: boolean; error?: string
   }
 }
 
-/**
- * Set Nano Banana model preference (empty = use Gemini default).
- */
-export function setNanoBananaModel(
-  db: any,
-  model: string
-): { success: boolean; error?: string } {
-  try {
-    // For v1, model selection is not exposed to users, so this is mostly a no-op
-    // In future, this could allow selecting different Gemini models
-    console.debug("[AI] Nano Banana model set");
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[AI] Failed to set Nano Banana model", { message });
-    return {
-      success: false,
-      error: "Failed to set model.",
-    };
-  }
-}
 
 /**
  * Detect and clear old Pollinations configuration on migration.
