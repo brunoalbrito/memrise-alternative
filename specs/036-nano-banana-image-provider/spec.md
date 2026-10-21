@@ -28,22 +28,23 @@ The learner's saved Pollinations key and settings are migrated to Google Gemini.
 
 ---
 
-### User Story 2 - Use a single Google API key (Priority: P1)
+### User Story 2 - Use a single Google API key with flexible model selection (Priority: P1)
 
-The "Connect AI" dialog uses a single Google AI Studio API key for text, audio, and image generation. There is no separate image key section. The learner pastes and saves the key, sees it masked (last 4 characters), and can remove it. The key stays on the learner's device.
+The "Connect AI" dialog uses a single Google AI Studio API key for text, audio, and image generation. The learner pastes and saves the key, sees it masked (last 4 characters), and can remove it. An optional "Image model" field allows selecting a specific Gemini image model; left empty, the provider's default is used.
 
-**Why this priority**: Simplifying to a single key reduces configuration complexity and API management overhead.
+**Why this priority**: Simplifying to a single key reduces configuration complexity. Model flexibility allows users to tune performance vs. quality trade-offs.
 
-**Independent Test**: Save a Google API key in the key field, verify text/audio/image generation all use the same key, reload and see it still saved, remove it and see Auto-fill ask for it again.
+**Independent Test**: Save a Google API key, set text/audio/image models, verify text/audio/image generation all use the same key with specified models, reload and see settings persist, remove key and see Auto-fill ask for it again.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Connect AI dialog, **When** it opens, **Then** it shows a single "Google AI Studio API key" section that handles text, audio, and image generation. No separate image key input.
+1. **Given** the Connect AI dialog, **When** it opens, **Then** it shows a single "Google AI Studio API key" section that handles text, audio, and image generation. Under Models, it shows editable "Text model", "Speech model", and "Image model" fields.
 2. **Given** a key typed in, **When** the learner saves it, **Then** it is stored on the device, "AI connected." is shown and the input empties; the key is shown only masked afterward.
 3. **Given** an empty key or a key with spaces, **When** the learner saves, **Then** "Enter your API key without spaces." is shown and nothing is saved.
 4. **Given** a saved key, **When** the learner removes it and confirms, **Then** it is deleted from the device and Auto-fill is disabled until a new key is configured.
-5. **Given** Auto-fill enabled, **When** pressing Auto-fill on a word, **Then** the same key is used for text, audio, and image generation without asking for separate keys.
-6. **Given** earlier saved settings with separate Pollinations and Google keys, **When** the app starts, **Then** only the Google key is retained and Pollinations settings are cleared.
+5. **Given** the "Image model" field, **When** the learner leaves it empty, **Then** Gemini's default image model is used; when filled, that model name is sent to the API.
+6. **Given** model settings, **When** the learner presses "Save models", **Then** they are stored and used for all subsequent text, audio, and image generation requests.
+7. **Given** earlier saved settings with separate Pollinations and Google keys, **When** the app starts, **Then** only the Google key is retained and Pollinations settings are cleared.
 
 ---
 
