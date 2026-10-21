@@ -3,7 +3,7 @@ import { getApi, isDesktop } from "../../../shared/api";
 import { useProgressStore, type Word } from "../../home";
 import { chooseExercise, isChoiceKind, type Exercise } from "../model/exercises";
 import { hashSeed } from "../model/tiles";
-import { applyAnswer, isOver, questionSeconds, startGame, type GameState } from "../model/speedGame";
+import { applyAnswer, isListening, isOver, questionSeconds, rotateKinds, startGame, type GameState } from "../model/speedGame";
 import type { PracticeContext } from "./usePracticeSession";
 
 export type SpeedPhase = "asking" | "right" | "wrong";
@@ -25,7 +25,7 @@ const PAUSE_WRONG_MS = 900;
 
 /** Seconds a question allows: longer prompts and recordings get more time. */
 function totalMsFor(word: Word, exercise: Exercise): number {
-  const listening = exercise.kind === "audio-to-word";
+  const listening = isListening(exercise.kind);
   const prompt = exercise.kind === "meaning-to-word" ? word.meaning : exercise.kind === "image-to-word" ? "" : word.text;
   return questionSeconds(prompt.trim().length, listening) * 1000;
 }
@@ -41,17 +41,23 @@ export function useSpeedGame(courseId: string, planned: Word[], context: Practic
     const choices = context.enabled.filter(isChoiceKind);
     const made: SpeedQuestion[] = [];
     for (const word of planned) {
-      const exercise = chooseExercise({
-        word,
-        levelId: levelOf.get(word.id) ?? "",
-        pool: context.pool,
-        stage: "review",
-        session: "speed",
-        enabled: choices,
-        seed: hashSeed(word.id) ^ salt,
-      });
-      // Typing is never used in the game: the word is left out instead.
-      if (isChoiceKind(exercise.kind)) made.push({ word, exercise, totalMs: totalMsFor(word, exercise) });
+      // Picture, recording and meaning questions take turns; a kind this word cannot be asked as is skipped.
+      for (const kind of rotateKinds(choices, made.length)) {
+        const exercise = chooseExercise({
+          word,
+          levelId: levelOf.get(word.id) ?? "",
+          pool: context.pool,
+          stage: "review",
+          session: "speed",
+          enabled: [kind],
+          seed: hashSeed(word.id) ^ salt,
+        });
+        if (exercise.kind === kind) {
+          made.push({ word, exercise, totalMs: totalMsFor(word, exercise) });
+          break;
+        }
+      }
+      // Typing is never used in the game: a word that fits no choice kind is left out instead.
     }
     return { questions: made, leftOut: planned.length - made.length };
   });
