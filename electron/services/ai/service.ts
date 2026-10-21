@@ -5,7 +5,7 @@ import { parseWordText, type WordText } from "./suggestion";
 import { wavFromBase64 } from "./wav";
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const POLLINATIONS_BASE = "https://gen.pollinations.ai/image/";
+const GOOGLE_IMAGE_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent";
 const VOICE = "Kore";
 
 export const DEFAULT_TEXT_MODEL = "gemini-3.8-flash";
@@ -22,7 +22,7 @@ type Fetch = typeof fetch;
 export interface Models {
   textModel: string;
   speechModel: string;
-  pollinationsModel: string;
+  nanoBananaModel: string;
 }
 
 const STYLE_AND_NO_TEXT =
@@ -108,18 +108,18 @@ export class AiService {
     return {
       textModel: this.settings.get("ai.textModel") ?? DEFAULT_TEXT_MODEL,
       speechModel: this.settings.get("ai.speechModel") ?? DEFAULT_SPEECH_MODEL,
-      pollinationsModel: this.settings.get("ai.pollinationsModel") ?? "",
+      nanoBananaModel: this.settings.get("ai.nanoBananaModel") ?? "",
     };
   }
 
   setModels(models: Models): void {
     this.settings.set("ai.textModel", models.textModel);
     this.settings.set("ai.speechModel", models.speechModel);
-    this.settings.set("ai.pollinationsModel", models.pollinationsModel);
+    this.settings.set("ai.nanoBananaModel", models.nanoBananaModel);
   }
 
   restoreModels(): Models {
-    for (const key of ["ai.textModel", "ai.speechModel", "ai.pollinationsModel"]) this.settings.delete(key);
+    for (const key of ["ai.textModel", "ai.speechModel", "ai.nanoBananaModel"]) this.settings.delete(key);
     return this.models();
   }
 
@@ -212,9 +212,9 @@ export class AiService {
     return text;
   }
 
-  /** Picture for a sentence: describe the scene (fallback on failure), then draw it. Returns JPEG bytes. */
+  /** Picture for a sentence: describe the scene (fallback on failure), then draw it using Nano Banana/Gemini. Returns JPEG bytes. */
   async wordImage(word: string, sentence: string): Promise<Uint8Array> {
-    const key = this.secrets.reveal("pollinations");
+    const key = this.secrets.reveal("nanoBanana");
     if (key === null) throw new AiError("image-no-key");
     let scene: string;
     try {
@@ -226,31 +226,72 @@ export class AiService {
   }
 
   private async drawImage(prompt: string, key: string): Promise<Uint8Array> {
-    const { pollinationsModel } = this.models();
-    const query = new URLSearchParams({ width: "768", height: "768" });
-    if (pollinationsModel.trim() !== "") query.set("model", pollinationsModel.trim());
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        aspectRatio: "1:1",
+        outputMimeType: "image/jpeg",
+      },
+    };
+
     let response: Response;
     try {
-      response = await this.doFetch(`${POLLINATIONS_BASE}${encodeURIComponent(prompt)}?${query.toString()}`, {
-        headers: { Authorization: `Bearer ${key}` },
+      response = await this.doFetch(`${GOOGLE_IMAGE_ENDPOINT}?key=${encodeURIComponent(key)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "TimeoutError") throw new AiError("timeout");
       throw new AiError("network");
     }
+
     if (response.status === 401 || response.status === 403) throw new AiError("image-key");
-    if (response.status === 402) throw new AiError("image-credit");
     if (response.status === 429) throw new AiError("limit");
+    if (response.status === 400) throw new AiError("image");
     if (!response.ok) throw new AiError("image");
-    if (!(response.headers.get("content-type") ?? "").startsWith("image/")) throw new AiError("image");
-    let bytes: Uint8Array;
+
+    let json: Json;
     try {
-      bytes = new Uint8Array(await response.arrayBuffer());
+      json = (await response.json()) as Json;
     } catch {
       throw new AiError("image");
     }
+
+    // Extract base64 image from Gemini API response
+    const candidates = (json["candidates"] as unknown[]) ?? [];
+    if (candidates.length === 0) throw new AiError("image");
+
+    const candidate = candidates[0] as Json;
+    const content = candidate["content"] as Json;
+    const parts = (content["parts"] as unknown[]) ?? [];
+    if (parts.length === 0) throw new AiError("image");
+
+    const part = parts[0] as Json;
+    const inlineData = part["inlineData"] as Json;
+    if (!inlineData) throw new AiError("image");
+
+    const base64Data = inlineData["data"];
+    if (typeof base64Data !== "string" || base64Data.length === 0) throw new AiError("image");
+
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(Buffer.from(base64Data, "base64"));
+    } catch {
+      throw new AiError("image");
+    }
+
     if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw new AiError("image");
+
     try {
       return this.shrink(bytes);
     } catch {

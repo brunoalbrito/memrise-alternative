@@ -165,9 +165,9 @@ describe("AiService", () => {
 
   it("keeps editable model names and restores the defaults", () => {
     const { ai } = service(() => json({}));
-    expect(ai.models()).toEqual({ textModel: DEFAULT_TEXT_MODEL, speechModel: "gemini-3.8-flash-tts", pollinationsModel: "" });
-    ai.setModels({ textModel: "t", speechModel: "s", pollinationsModel: "p" });
-    expect(ai.models()).toEqual({ textModel: "t", speechModel: "s", pollinationsModel: "p" });
+    expect(ai.models()).toEqual({ textModel: DEFAULT_TEXT_MODEL, speechModel: "gemini-3.8-flash-tts", nanoBananaModel: "" });
+    ai.setModels({ textModel: "t", speechModel: "s", nanoBananaModel: "p" });
+    expect(ai.models()).toEqual({ textModel: "t", speechModel: "s", nanoBananaModel: "p" });
     expect(ai.restoreModels().textModel).toBe(DEFAULT_TEXT_MODEL);
   });
 });

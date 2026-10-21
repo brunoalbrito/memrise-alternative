@@ -19,20 +19,20 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const weakProtection = useAiStore((state) => state.weakProtection);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
-  const pollinationsConnected = useAiStore((state) => state.pollinationsConnected);
-  const pollinationsLast4 = useAiStore((state) => state.pollinationsLast4);
-  const pollinationsModel = useAiStore((state) => state.pollinationsModel);
+  const nanoBananaConnected = useAiStore((state) => state.nanoBananaConnected);
+  const nanoBananaLast4 = useAiStore((state) => state.nanoBananaLast4);
+  const nanoBananaModel = useAiStore((state) => state.nanoBananaModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
-  const [imageInput, setImageInput] = useState(pollinationsModel);
+  const [imageInput, setImageInput] = useState(nanoBananaModel);
   const [pKeyInput, setPKeyInput] = useState("");
   const [pKeyError, setPKeyError] = useState("");
   const [pStatus, setPStatus] = useState("");
-  const [confirmingRemovePollinations, setConfirmingRemovePollinations] = useState(false);
+  const [confirmingRemoveNanoBanana, setConfirmingRemoveNanoBanana] = useState(false);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -175,8 +175,8 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           aria-describedby="pollinations-key-help"
           className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
         />
-        <p id="pollinations-key-help" className="mt-1 text-body-medium text-on-surface-variant">
-          {pollinationsConnected ? `Saved key: ${maskKey(pollinationsLast4)}` : "No key saved."}
+        <p id="nano-banana-key-help" className="mt-1 text-body-medium text-on-surface-variant">
+          {nanoBananaConnected ? `Saved key: ${maskKey(nanoBananaLast4)}` : "No key saved."}
         </p>
         {pKeyError && <p className="mt-1 text-body-medium text-error">{pKeyError}</p>}
         <p aria-live="polite" className="mt-2 min-h-6 text-body-medium text-on-surface">
@@ -188,7 +188,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
             onClick={() => {
               void useAiStore
                 .getState()
-                .saveKey("pollinations", pKeyInput)
+                .saveKey("nanoBanana", pKeyInput)
                 .then((problem) => {
                   if (problem) {
                     setPKeyError(problem);
@@ -196,7 +196,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
                   }
                   setPKeyError("");
                   setPKeyInput("");
-                  setPStatus("Pollinations connected.");
+                  setPStatus("Nano Banana 2 Lite connected.");
                 });
             }}
           >
@@ -204,25 +204,25 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
           </Button>
           <Button
             variant="text"
-            disabled={!pollinationsConnected}
-            onClick={() => setConfirmingRemovePollinations(true)}
+            disabled={!nanoBananaConnected}
+            onClick={() => setConfirmingRemoveNanoBanana(true)}
           >
             Remove key
           </Button>
         </div>
-        {confirmingRemovePollinations && (
+        {confirmingRemoveNanoBanana && (
           <div
             className="mt-3 rounded-m3-md bg-surface-container p-3"
             role="group"
-            aria-label="Remove Pollinations key"
+            aria-label="Remove Nano Banana key"
           >
             <p className="text-body-medium">Remove the key from this device?</p>
             <div className="mt-2 flex gap-2">
               <Button
                 variant="text"
                 onClick={() => {
-                  void useAiStore.getState().removeKey("pollinations");
-                  setConfirmingRemovePollinations(false);
+                  void useAiStore.getState().removeKey("nanoBanana");
+                  setConfirmingRemoveNanoBanana(false);
                   setPStatus("Key removed.");
                 }}
               >
@@ -295,7 +295,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
                   .getState()
                   .restoreModels()
                   .then(() => {
-                    const { textModel: text, speechModel: speech, pollinationsModel: image } =
+                    const { textModel: text, speechModel: speech, nanoBananaModel: image } =
                       useAiStore.getState();
                     setTextInput(text);
                     setSpeechInput(speech);

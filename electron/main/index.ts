@@ -157,7 +157,7 @@ function registerIpc(): void {
   });
   handle("ai:status", null, () => ({
     google: secrets!.status("google"),
-    pollinations: secrets!.status("pollinations"),
+    nanoBanana: secrets!.status("nanoBanana"),
     models: ai!.models(),
     weakProtection: secrets!.weakProtection(),
   }));
@@ -297,6 +297,10 @@ function start(): void {
   const settings = new Settings(library.db);
   appSettings = settings;
   secrets = new Secrets(settings, osCipher);
+  // Migration: clear old Pollinations key on startup
+  if (secrets.status("pollinations").connected) {
+    secrets.remove("pollinations");
+  }
   ai = new AiService(secrets, settings, shrinkImage);
   backups = new Backups(
     library.db,

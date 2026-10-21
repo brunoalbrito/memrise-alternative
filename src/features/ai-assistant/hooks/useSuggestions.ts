@@ -45,7 +45,7 @@ export function useSuggestions(word: string, languageName: string) {
     imageControllerRef.current = controller;
     const runId = imageRunRef.current;
     const timer = window.setTimeout(() => controller.abort("timeout"), IMAGE_TIMEOUT_MS);
-    if (!useAiStore.getState().pollinationsConnected) {
+    if (!useAiStore.getState().nanoBananaConnected) {
       window.clearTimeout(timer);
       setImage({ status: "error", kind: "image-no-key" });
       return;
