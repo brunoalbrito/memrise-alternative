@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MemBetter: local-first vocabulary learning (Memrise/Anki style). Electron + React + TypeScript desktop app with local SQLite storage. Data stays on the user's computer; AI help is optional.
 
+Spec-driven development with 37+ detailed specifications in `specs/` for features, architecture, research, and implementation plans. All work tracks via `/speckit-*` workflows.
+
 ## Setup
 
 - Node.js ≥22.22
@@ -57,11 +59,25 @@ Two separate, never-overlapping data locations:
 
 Sample course file (`dev-data/sample-courses.membetter`) is ignored by git and only loaded into the dev folder.
 
+## Specifications
+
+Project uses structured specs in `specs/NNN-feature-name/` with:
+- `spec.md` — Feature requirements and acceptance criteria
+- `plan.md` — Implementation roadmap and architecture decisions
+- `research.md` — Technical research and alternative evaluations
+- `data-model.md` — Data structures and entity relationships
+- `quickstart.md` — Developer validation guide and test scenarios
+- `contracts/` — API and IPC interface contracts
+- `checklists/requirements.md` — Specification quality gate before planning
+
+All feature work starts with a spec via `/speckit-specify`, followed by `/speckit-plan`, `/speckit-tasks`, and `/speckit-implement`. Commits reference the spec number.
+
 ## Code Style
 
 - ESLint: standard config (no custom rules beyond react-hooks, typescript-eslint)
 - No formatter configured (Prettier, Biome, etc.)
 - Branches: feature/ or bugfix/ prefix
+- AI services: Use context-appropriate timeouts in `electron/services/ai/service.ts` — TEXT_TIMEOUT_MS (45s), AUDIO_TIMEOUT_MS (60s), IMAGE_TIMEOUT_MS (90s), DESCRIBE_SCENE_TIMEOUT_MS (30s)
 
 ## Git Workflow
 
