@@ -11,8 +11,10 @@ const VOICE = "Kore";
 export const DEFAULT_TEXT_MODEL = "gemini-3.8-flash";
 export const DEFAULT_SPEECH_MODEL = "gemini-3.8-flash-tts";
 
-const TEXT_TIMEOUT_MS = 30_000;
-const IMAGE_TIMEOUT_MS = 45_000;
+const TEXT_TIMEOUT_MS = 45_000;
+const AUDIO_TIMEOUT_MS = 60_000;
+const DESCRIBE_SCENE_TIMEOUT_MS = 30_000;
+const IMAGE_TIMEOUT_MS = 90_000;
 const TEST_TIMEOUT_MS = 15_000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -186,7 +188,7 @@ export class AiService {
           response_format: { type: "audio", mime_type: "audio/wav" },
           generation_config: { speech_config: [{ voice: VOICE }] },
         },
-        TEXT_TIMEOUT_MS,
+        AUDIO_TIMEOUT_MS,
       );
     } catch (error) {
       if (error instanceof AiError && error.kind !== "service" && error.kind !== "unusable") throw error;
@@ -206,7 +208,7 @@ export class AiService {
       "Describe in one or two sentences (at most 40 words, in English) a simple picture that shows the situation in the sentence: who is there, what they are doing and where, so that the meaning of the word is clearly visible.",
       "Describe only what can be seen. Do not quote the sentence. Do not mention or include any writing, signs, labels, captions, speech or words that would appear in the picture.",
     ].join("\n");
-    const json = await this.post({ model: this.models().textModel, input: prompt }, IMAGE_TIMEOUT_MS);
+    const json = await this.post({ model: this.models().textModel, input: prompt }, DESCRIBE_SCENE_TIMEOUT_MS);
     const text = extractText(json).trim();
     if (text === "") throw new AiError("unusable");
     return text;
