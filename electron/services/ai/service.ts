@@ -22,7 +22,6 @@ type Fetch = typeof fetch;
 export interface Models {
   textModel: string;
   speechModel: string;
-  nanoBananaModel: string;
 }
 
 const STYLE_AND_NO_TEXT =
@@ -108,18 +107,16 @@ export class AiService {
     return {
       textModel: this.settings.get("ai.textModel") ?? DEFAULT_TEXT_MODEL,
       speechModel: this.settings.get("ai.speechModel") ?? DEFAULT_SPEECH_MODEL,
-      nanoBananaModel: this.settings.get("ai.nanoBananaModel") ?? "",
     };
   }
 
   setModels(models: Models): void {
     this.settings.set("ai.textModel", models.textModel);
     this.settings.set("ai.speechModel", models.speechModel);
-    this.settings.set("ai.nanoBananaModel", models.nanoBananaModel);
   }
 
   restoreModels(): Models {
-    for (const key of ["ai.textModel", "ai.speechModel", "ai.nanoBananaModel"]) this.settings.delete(key);
+    for (const key of ["ai.textModel", "ai.speechModel"]) this.settings.delete(key);
     return this.models();
   }
 
@@ -214,7 +211,7 @@ export class AiService {
 
   /** Picture for a sentence: describe the scene (fallback on failure), then draw it using Nano Banana/Gemini. Returns JPEG bytes. */
   async wordImage(word: string, sentence: string): Promise<Uint8Array> {
-    const key = this.secrets.reveal("nanoBanana");
+    const key = this.secrets.reveal("google");
     if (key === null) throw new AiError("image-no-key");
     let scene: string;
     try {

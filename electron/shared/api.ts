@@ -9,12 +9,11 @@ import type {
   LibrarySnapshot,
 } from "./schemas";
 
-export type AiProvider = "google" | "nanoBanana";
+export type AiProvider = "google";
 
 export interface AiStatus {
   google: { connected: boolean; last4: string };
-  nanoBanana: { connected: boolean; last4: string };
-  models: { textModel: string; speechModel: string; nanoBananaModel: string };
+  models: { textModel: string; speechModel: string };
   /** The operating system only offers weak protection for saved keys. */
   weakProtection: boolean;
 }

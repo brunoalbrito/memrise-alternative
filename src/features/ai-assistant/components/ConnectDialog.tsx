@@ -19,20 +19,12 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const weakProtection = useAiStore((state) => state.weakProtection);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
-  const nanoBananaConnected = useAiStore((state) => state.nanoBananaConnected);
-  const nanoBananaLast4 = useAiStore((state) => state.nanoBananaLast4);
-  const nanoBananaModel = useAiStore((state) => state.nanoBananaModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
-  const [imageInput, setImageInput] = useState(nanoBananaModel);
-  const [pKeyInput, setPKeyInput] = useState("");
-  const [pKeyError, setPKeyError] = useState("");
-  const [pStatus, setPStatus] = useState("");
-  const [confirmingRemoveNanoBanana, setConfirmingRemoveNanoBanana] = useState(false);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -77,10 +69,9 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         for a word.
       </p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
-        The word and the course language are sent to Google for text and audio. The word and the
-        sentence you choose are sent to Google Gemini to create the picture. Your keys are stored
-        encrypted by your computer's protected storage, are only used by the app to call these services,
-        and are never shown again. Use keys with spending limits.
+        Auto-fill uses a single Google AI Studio API key to prepare a definition, example sentences, IPA,
+        audio, and picture for a word. Your key is stored encrypted by your computer's protected storage,
+        is only used by the app to call Google services, and is never shown again. Use keys with spending limits.
       </p>
       <p className="mt-2 text-body-medium">
         <a
@@ -158,85 +149,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
         </div>
       )}
 
-      <div className="mt-6 border-t border-outline-variant pt-4">
-        <label htmlFor="nano-banana-key" className="text-label-large font-medium">
-          Google Gemini API key (for images)
-        </label>
-        <input
-          id="nano-banana-key"
-          type="password"
-          autoComplete="off"
-          value={pKeyInput}
-          onChange={(event) => {
-            setPKeyInput(event.target.value);
-            setPKeyError("");
-          }}
-          aria-invalid={pKeyError ? true : undefined}
-          aria-describedby="nano-banana-key-help"
-          className={`${inputClasses} mt-1 ${pKeyError ? "border-error" : ""}`}
-        />
-        <p id="nano-banana-key-help" className="mt-1 text-body-medium text-on-surface-variant">
-          {nanoBananaConnected ? `Saved key: ${maskKey(nanoBananaLast4)}` : "No key saved."}
-        </p>
-        {pKeyError && <p className="mt-1 text-body-medium text-error">{pKeyError}</p>}
-        <p aria-live="polite" className="mt-2 min-h-6 text-body-medium text-on-surface">
-          {pStatus}
-        </p>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <Button
-            variant="filled"
-            onClick={() => {
-              void useAiStore
-                .getState()
-                .saveKey("nanoBanana", pKeyInput)
-                .then((problem) => {
-                  if (problem) {
-                    setPKeyError(problem);
-                    return;
-                  }
-                  setPKeyError("");
-                  setPKeyInput("");
-                  setPStatus("Nano Banana 2 Lite connected.");
-                });
-            }}
-          >
-            Save
-          </Button>
-          <Button
-            variant="text"
-            disabled={!nanoBananaConnected}
-            onClick={() => setConfirmingRemoveNanoBanana(true)}
-          >
-            Remove key
-          </Button>
-        </div>
-        {confirmingRemoveNanoBanana && (
-          <div
-            className="mt-3 rounded-m3-md bg-surface-container p-3"
-            role="group"
-            aria-label="Remove Nano Banana key"
-          >
-            <p className="text-body-medium">Remove the key from this device?</p>
-            <div className="mt-2 flex gap-2">
-              <Button
-                variant="text"
-                onClick={() => {
-                  void useAiStore.getState().removeKey("nanoBanana");
-                  setConfirmingRemoveNanoBanana(false);
-                  setPStatus("Key removed.");
-                }}
-              >
-                Remove
-              </Button>
-              <Button variant="text" onClick={() => setConfirmingRemoveNanoBanana(false)}>
-                Keep
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <details className="mt-4">
+      <details className="mt-6 border-t border-outline-variant pt-4">
         <summary className="cursor-pointer text-label-large font-medium">Models</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div>
@@ -261,18 +174,6 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               className={`${inputClasses} mt-1`}
             />
           </div>
-          <div>
-            <label htmlFor="ai-image-model" className="text-label-large font-medium">
-              Image model (Gemini, optional)
-            </label>
-            <input
-              id="ai-image-model"
-              value={imageInput}
-              placeholder="Provider default"
-              onChange={(event) => setImageInput(event.target.value)}
-              className={`${inputClasses} mt-1`}
-            />
-          </div>
           <p aria-live="polite" className="min-h-6 text-body-medium">
             {modelsStatus}
           </p>
@@ -282,7 +183,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               onClick={() =>
                 void useAiStore
                   .getState()
-                  .setModels(textInput, speechInput, imageInput)
+                  .setModels(textInput, speechInput)
                   .then((problem) => setModelsStatus(problem ?? "Models saved."))
               }
             >
@@ -295,11 +196,10 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
                   .getState()
                   .restoreModels()
                   .then(() => {
-                    const { textModel: text, speechModel: speech, nanoBananaModel: image } =
+                    const { textModel: text, speechModel: speech } =
                       useAiStore.getState();
                     setTextInput(text);
                     setSpeechInput(speech);
-                    setImageInput(image);
                     setModelsStatus("Defaults restored.");
                   });
               }}

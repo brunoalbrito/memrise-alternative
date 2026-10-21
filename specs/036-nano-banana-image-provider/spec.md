@@ -1,4 +1,4 @@
-# Feature Specification: Replace Pollinations with Nano Banana 2 Lite
+# Feature Specification: Replace Pollinations with Google Gemini for Image Generation
 
 **Feature Branch**: `036-nano-banana-image-provider`
 
@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User request: "Replace Pollinations API key by Nano Banana 2 Lite"
+**Input**: User request: "Replace Pollinations with a single Google API key for all purposes"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -28,22 +28,22 @@ The learner's saved Pollinations key and settings are migrated to Google Gemini.
 
 ---
 
-### User Story 2 - Save and manage the Google Gemini key (Priority: P1)
+### User Story 2 - Use a single Google API key (Priority: P1)
 
-The "Connect AI" dialog updates its image provider section to accept Google Gemini key instead of Pollinations: paste and save it, see it masked (last 4 characters), and remove it. The key stays on the learner's device. An optional "Image model" field lets the learner choose a Google Gemini model; left empty, Google Gemini's own default is used.
+The "Connect AI" dialog uses a single Google AI Studio API key for text, audio, and image generation. There is no separate image key section. The learner pastes and saves the key, sees it masked (last 4 characters), and can remove it. The key stays on the learner's device.
 
-**Why this priority**: The learner needs to securely store and manage the new provider's key.
+**Why this priority**: Simplifying to a single key reduces configuration complexity and API management overhead.
 
-**Independent Test**: Save a Google Gemini key and see it masked, reload and see it still saved, remove it and see Auto-fill's Image section ask for it again.
+**Independent Test**: Save a Google API key in the key field, verify text/audio/image generation all use the same key, reload and see it still saved, remove it and see Auto-fill ask for it again.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Connect AI dialog, **When** it opens, **Then** it shows a "Google Gemini API key (for images)" section with an input, "Save" and "Remove key", and the existing Google key section. The description explains that image generation is performed by Google Gemini instead of Pollinations.
-2. **Given** a key typed in the Google Gemini input, **When** the learner saves it, **Then** it is stored on the device, "Nano Banana 2 Lite connected." is shown and the input empties; the key is shown only masked afterward.
+1. **Given** the Connect AI dialog, **When** it opens, **Then** it shows a single "Google AI Studio API key" section that handles text, audio, and image generation. No separate image key input.
+2. **Given** a key typed in, **When** the learner saves it, **Then** it is stored on the device, "AI connected." is shown and the input empties; the key is shown only masked afterward.
 3. **Given** an empty key or a key with spaces, **When** the learner saves, **Then** "Enter your API key without spaces." is shown and nothing is saved.
-4. **Given** a saved Google Gemini key, **When** the learner removes it and confirms, **Then** it is deleted from the device.
-5. **Given** the "Image model" field, **When** the learner leaves it empty, **Then** Google Gemini's default model is used; when filled, that model name is used.
-6. **Given** earlier saved settings with the Pollinations provider, **When** the app starts, **Then** those settings are cleared and the image provider is empty until configured.
+4. **Given** a saved key, **When** the learner removes it and confirms, **Then** it is deleted from the device and Auto-fill is disabled until a new key is configured.
+5. **Given** Auto-fill enabled, **When** pressing Auto-fill on a word, **Then** the same key is used for text, audio, and image generation without asking for separate keys.
+6. **Given** earlier saved settings with separate Pollinations and Google keys, **When** the app starts, **Then** only the Google key is retained and Pollinations settings are cleared.
 
 ---
 
