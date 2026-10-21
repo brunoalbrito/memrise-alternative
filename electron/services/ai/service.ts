@@ -3,9 +3,9 @@ import type { Settings } from "../settings";
 import { AiError } from "./errors";
 import { parseWordText, type WordText } from "./suggestion";
 import { wavFromBase64 } from "./wav";
+import { GoogleGenAI } from "@google/genai";
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const GOOGLE_IMAGE_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent";
 const VOICE = "Kore";
 
 export const DEFAULT_TEXT_MODEL = "gemini-3.8-flash";
@@ -14,7 +14,7 @@ export const DEFAULT_SPEECH_MODEL = "gemini-3.8-flash-tts";
 const TEXT_TIMEOUT_MS = 45_000;
 const AUDIO_TIMEOUT_MS = 60_000;
 const DESCRIBE_SCENE_TIMEOUT_MS = 30_000;
-const IMAGE_TIMEOUT_MS = 90_000;
+// IMAGE_TIMEOUT_MS = 90_000 - SDK handles timeout internally
 const TEST_TIMEOUT_MS = 15_000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -216,87 +216,108 @@ export class AiService {
 
   /** Picture for a sentence: describe the scene (fallback on failure), then draw it using Nano Banana/Gemini. Returns JPEG bytes. */
   async wordImage(word: string, sentence: string): Promise<Uint8Array> {
+    console.log("[wordImage] Start", { word, sentence });
     const key = this.secrets.reveal("google");
+    console.log("[wordImage] Key retrieved:", key ? "yes" : "no");
     if (key === null) throw new AiError("image-no-key");
     let scene: string;
     try {
+      console.log("[wordImage] Calling describeScene");
       scene = await this.describeScene(word, sentence);
-    } catch {
+      console.log("[wordImage] describeScene result:", scene);
+    } catch (e) {
+      console.log("[wordImage] describeScene failed:", e);
       scene = buildFallbackScene(sentence);
+      console.log("[wordImage] Using fallback:", scene);
     }
+    console.log("[wordImage] Calling drawImage");
     return this.drawImage(buildImagePrompt(scene), key);
   }
 
   private async drawImage(prompt: string, key: string): Promise<Uint8Array> {
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        aspectRatio: "1:1",
-        outputMimeType: "image/jpeg",
-      },
-    };
+    console.log("[drawImage] Start, prompt length:", prompt.length);
+    const model = this.models().imageModel || "gemini-3.1-flash-lite-image";
+    console.log("[drawImage] Using model:", model);
 
-    let response: Response;
+    const ai = new GoogleGenAI({ apiKey: key });
+
+    let interaction;
     try {
-      response = await this.doFetch(`${GOOGLE_IMAGE_ENDPOINT}?key=${encodeURIComponent(key)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
-      });
+      console.log("[drawImage] Making SDK request to GoogleGenAI.interactions.create()");
+      interaction = await ai.interactions.create({
+        model: `models/${model}`,
+        input: prompt,
+        generation_config: {
+          temperature: 1,
+          topP: 0.95,
+          thinkingLevel: "minimal",
+        },
+        response_modalities: ["image"],
+        response_config: {
+          aspectRatio: "1:1",
+          outputMimeType: "image/jpeg",
+        },
+      } as any);
     } catch (error) {
+      console.log("[drawImage] SDK error:", error);
+      if (error instanceof Error) {
+        const message = error.message || "";
+        if (message.includes("401") || message.includes("403") || message.includes("authentication")) {
+          throw new AiError("invalid-key");
+        }
+        if (message.includes("429") || message.includes("quota") || message.includes("limit")) {
+          throw new AiError("limit");
+        }
+        if (error.name === "TimeoutError" || message.includes("timeout")) {
+          throw new AiError("timeout");
+        }
+      }
       if (error instanceof DOMException && error.name === "TimeoutError") throw new AiError("timeout");
       throw new AiError("network");
     }
 
-    if (response.status === 401 || response.status === 403) throw new AiError("image-key");
-    if (response.status === 429) throw new AiError("limit");
-    if (response.status === 400) throw new AiError("image");
-    if (!response.ok) throw new AiError("image");
+    // Extract image from SDK response: interaction.steps[].content[].data
+    console.log("[drawImage] Extracting image from SDK response");
+    const steps = (interaction.steps ?? []) as any[];
+    const modelOutputSteps = steps.filter((s) => s.type === "model_output");
 
-    let json: Json;
-    try {
-      json = (await response.json()) as Json;
-    } catch {
+    if (modelOutputSteps.length === 0) {
+      console.log("[drawImage] No model_output steps found");
       throw new AiError("image");
     }
 
-    // Extract base64 image from Gemini API response
-    const candidates = (json["candidates"] as unknown[]) ?? [];
-    if (candidates.length === 0) throw new AiError("image");
+    const imageParts = modelOutputSteps
+      .flatMap((s) => s.content ?? [])
+      .filter((p: any) => p.type === "image");
 
-    const candidate = candidates[0] as Json;
-    const content = candidate["content"] as Json;
-    const parts = (content["parts"] as unknown[]) ?? [];
-    if (parts.length === 0) throw new AiError("image");
+    console.log("[drawImage] Image parts count:", imageParts.length);
+    if (imageParts.length === 0) throw new AiError("image");
 
-    const part = parts[0] as Json;
-    const inlineData = part["inlineData"] as Json;
-    if (!inlineData) throw new AiError("image");
-
-    const base64Data = inlineData["data"];
-    if (typeof base64Data !== "string" || base64Data.length === 0) throw new AiError("image");
+    const imagePart = imageParts[0] as any;
+    const base64Data = imagePart.data;
+    if (typeof base64Data !== "string" || base64Data.length === 0) {
+      console.log("[drawImage] No valid image data in response");
+      throw new AiError("image");
+    }
 
     let bytes: Uint8Array;
     try {
       bytes = new Uint8Array(Buffer.from(base64Data, "base64"));
     } catch {
+      console.log("[drawImage] Base64 decode failed");
       throw new AiError("image");
     }
 
-    if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw new AiError("image");
+    console.log("[drawImage] Image bytes size:", bytes.length);
+    if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) {
+      console.log("[drawImage] Image size out of range");
+      throw new AiError("image");
+    }
 
     try {
       return this.shrink(bytes);
     } catch {
+      console.log("[drawImage] Shrink failed");
       throw new AiError("image");
     }
   }

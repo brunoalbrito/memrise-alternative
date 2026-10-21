@@ -46,11 +46,22 @@ export function generateWordAudio(word: string, signal: AbortSignal): Promise<Bl
 
 /** Describes the scene of the sentence and draws it. Returns a JPEG. */
 export function generateWordImage(word: string, sentence: string, signal: AbortSignal): Promise<Blob> {
+  console.log("[generateWordImage] Called with", { word, sentence });
   return abortable(
     getApi()
       .ai.wordImage(word, sentence)
-      .then(unwrap)
-      .then((bytes) => new Blob([bytes as BlobPart], { type: "image/jpeg" })),
+      .then((result) => {
+        console.log("[generateWordImage] IPC result", result);
+        return unwrap(result);
+      })
+      .then((bytes) => {
+        console.log("[generateWordImage] Got bytes:", bytes);
+        return new Blob([bytes as BlobPart], { type: "image/jpeg" });
+      })
+      .catch((error) => {
+        console.log("[generateWordImage] Error:", error);
+        throw error;
+      }),
     signal,
   );
 }

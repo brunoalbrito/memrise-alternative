@@ -25,6 +25,7 @@
     "dev:reset": "node scripts/reset-dev-data.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
