@@ -19,12 +19,14 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
   const weakProtection = useAiStore((state) => state.weakProtection);
   const textModel = useAiStore((state) => state.textModel);
   const speechModel = useAiStore((state) => state.speechModel);
+  const imageModel = useAiStore((state) => state.imageModel);
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [textInput, setTextInput] = useState(textModel);
   const [speechInput, setSpeechInput] = useState(speechModel);
+  const [imageInput, setImageInput] = useState(imageModel);
   const [modelsStatus, setModelsStatus] = useState("");
 
   useEffect(() => {
@@ -174,6 +176,18 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               className={`${inputClasses} mt-1`}
             />
           </div>
+          <div>
+            <label htmlFor="ai-image-model" className="text-label-large font-medium">
+              Image model
+            </label>
+            <input
+              id="ai-image-model"
+              value={imageInput}
+              placeholder="Provider default"
+              onChange={(event) => setImageInput(event.target.value)}
+              className={`${inputClasses} mt-1`}
+            />
+          </div>
           <p aria-live="polite" className="min-h-6 text-body-medium">
             {modelsStatus}
           </p>
@@ -183,7 +197,7 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
               onClick={() =>
                 void useAiStore
                   .getState()
-                  .setModels(textInput, speechInput)
+                  .setModels(textInput, speechInput, imageInput)
                   .then((problem) => setModelsStatus(problem ?? "Models saved."))
               }
             >
@@ -196,10 +210,11 @@ export function ConnectDialog({ onClose, onSaved }: ConnectDialogProps) {
                   .getState()
                   .restoreModels()
                   .then(() => {
-                    const { textModel: text, speechModel: speech } =
+                    const { textModel: text, speechModel: speech, imageModel: image } =
                       useAiStore.getState();
                     setTextInput(text);
                     setSpeechInput(speech);
+                    setImageInput(image);
                     setModelsStatus("Defaults restored.");
                   });
               }}

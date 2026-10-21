@@ -14,12 +14,13 @@ interface AiState {
   googleLast4: string;
   textModel: string;
   speechModel: string;
+  imageModel: string;
   /** The operating system offers only weak protection for saved keys. */
   weakProtection: boolean;
   hydrate: () => Promise<void>;
   saveKey: (provider: "google", key: string) => Promise<string | null>;
   removeKey: (provider: "google") => Promise<void>;
-  setModels: (textModel: string, speechModel: string) => Promise<string | null>;
+  setModels: (textModel: string, speechModel: string, imageModel: string) => Promise<string | null>;
   restoreModels: () => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ export const useAiStore = create<AiState>()((set, get) => ({
   googleLast4: "",
   textModel: DEFAULT_TEXT_MODEL,
   speechModel: DEFAULT_SPEECH_MODEL,
+  imageModel: "",
   weakProtection: false,
   hydrate: async () => {
     if (!isDesktop()) return;
@@ -58,11 +60,11 @@ export const useAiStore = create<AiState>()((set, get) => ({
     await getApi().ai.removeKey(provider);
     await get().hydrate();
   },
-  setModels: async (textModel, speechModel) => {
+  setModels: async (textModel, speechModel, imageModel) => {
     if (!isDesktop()) return UNAVAILABLE;
-    const result = await getApi().ai.setModels({ textModel, speechModel });
+    const result = await getApi().ai.setModels({ textModel, speechModel, imageModel });
     const message = error(result);
-    if (message === null) set({ textModel, speechModel });
+    if (message === null) set({ textModel, speechModel, imageModel });
     return message;
   },
   restoreModels: async () => {

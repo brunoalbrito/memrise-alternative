@@ -22,6 +22,7 @@ type Fetch = typeof fetch;
 export interface Models {
   textModel: string;
   speechModel: string;
+  imageModel: string;
 }
 
 const STYLE_AND_NO_TEXT =
@@ -107,16 +108,18 @@ export class AiService {
     return {
       textModel: this.settings.get("ai.textModel") ?? DEFAULT_TEXT_MODEL,
       speechModel: this.settings.get("ai.speechModel") ?? DEFAULT_SPEECH_MODEL,
+      imageModel: this.settings.get("ai.imageModel") ?? "",
     };
   }
 
   setModels(models: Models): void {
     this.settings.set("ai.textModel", models.textModel);
     this.settings.set("ai.speechModel", models.speechModel);
+    this.settings.set("ai.imageModel", models.imageModel);
   }
 
   restoreModels(): Models {
-    for (const key of ["ai.textModel", "ai.speechModel"]) this.settings.delete(key);
+    for (const key of ["ai.textModel", "ai.speechModel", "ai.imageModel"]) this.settings.delete(key);
     return this.models();
   }
 
