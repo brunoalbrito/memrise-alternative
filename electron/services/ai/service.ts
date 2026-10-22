@@ -275,7 +275,7 @@ export class AiService {
           thinking_level: "minimal",
         },
         response_modalities: ["image"],
-      } as any);
+      } as Record<string, unknown>);
     } catch (error) {
       console.log("[drawImage] SDK error:", error);
       if (error instanceof Error) {
@@ -296,7 +296,7 @@ export class AiService {
 
     // Extract image from SDK response: interaction.steps[].content[].data
     console.log("[drawImage] Extracting image from SDK response");
-    const steps = (interaction.steps ?? []) as any[];
+    const steps = (interaction.steps ?? []) as Array<{ type?: string; content?: Array<{ type?: string; data?: string }> }>;
     const modelOutputSteps = steps.filter((s) => s.type === "model_output");
 
     if (modelOutputSteps.length === 0) {
@@ -306,12 +306,12 @@ export class AiService {
 
     const imageParts = modelOutputSteps
       .flatMap((s) => s.content ?? [])
-      .filter((p: any) => p.type === "image");
+      .filter((p: { type?: string; data?: string }) => p.type === "image");
 
     console.log("[drawImage] Image parts count:", imageParts.length);
     if (imageParts.length === 0) throw new AiError("image");
 
-    const imagePart = imageParts[0] as any;
+    const imagePart = imageParts[0] as { type?: string; data?: string };
     const base64Data = imagePart.data;
     if (typeof base64Data !== "string" || base64Data.length === 0) {
       console.log("[drawImage] No valid image data in response");
