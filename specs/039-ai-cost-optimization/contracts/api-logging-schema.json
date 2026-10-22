@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "API Call Logging Schema",
+  "description": "Schema for logging and validating API calls in AI Cost Optimization feature",
+  "type": "object",
+  "definitions": {
+    "apiCallLog": {
+      "type": "object",
+      "description": "Single API call record",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (timestamp + operation + sequence)",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z-(text|audio|image)-[0-9]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp of API call"
+        },
+        "operation": {
+          "type": "string",
+          "enum": ["text", "audio", "image"],
+          "description": "Type of AI operation"
+        },
+        "modelName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Model name used (e.g., 'gemini-3.8-flash', 'gemini-3.1-flash-lite-image')"
+        },
+        "costEstimate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "multipleOf": 0.0001,
+          "description": "Estimated cost in USD (e.g., 0.05 for $0.05)"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether API call succeeded"
+        },
+        "errorType": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "invalid-key",
+            "limit",
+            "timeout",
+            "network",
+            "service",
+            "image",
+            "audio",
+            "refused",
+            "unusable",
+            "no-key",
+            "image-no-key"
+          ],
+          "description": "Error type from AiError.kind if success is false"
+        },
+        "word": {
+          "type": ["string", "null"],
+          "description": "Word being processed (optional, for debugging)"
+        },
+        "word_sentence": {
+          "type": ["string", "null"],
+          "description": "Sentence context (optional, for debugging)"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300000,
+          "description": "Duration in milliseconds (0-5 minutes)"
+        }
+      },
+      "required": ["id", "timestamp", "operation", "modelName", "costEstimate", "success", "durationMs"]
+    },
+    "costSummary": {
+      "type": "object",
+      "description": "Aggregated cost summary",
+      "properties": {
+        "totalCost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total cost in USD for all logged calls"
+        },
+        "totalCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of API calls"
+        },
+        "costByOperation": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "number", "minimum": 0 },
+            "audio": { "type": "number", "minimum": 0 },
+            "image": { "type": "number", "minimum": 0 }
+          },
+          "description": "Cost breakdown by operation type"
+        },
+        "costByModel": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 },
+          "description": "Cost breakdown by model name"
+        },
+        "averageCostPerCall": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average cost per call (totalCost / totalCalls)"
+        }
+      },
+      "required": ["totalCost", "totalCalls", "costByOperation", "costByModel"]
+    }
+  },
+  "properties": {
+    "apiCallLog": { "$ref": "#/definitions/apiCallLog" },
+    "costSummary": { "$ref": "#/definitions/costSummary" }
+  }
+}

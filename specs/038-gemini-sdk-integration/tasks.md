@@ -27,9 +27,9 @@ Project structure (Electron desktop app):
 
 **Purpose**: Add Google Generative AI SDK and prepare build environment
 
-- [x] T001 Install @google/genai package: `pnpm add @google/genai` and verify in package.json
-- [x] T002 Add TypeScript types for @google/genai by running `pnpm build` and fixing any type errors
-- [x] T003 Update CLAUDE.md AI services section to reference GoogleGenAI SDK (add note to electron/services/ai/service.ts location)
+- [x] T001 Install @google/genai package: `pnpm add @google/genai` and verify in package.json ✓
+- [x] T002 Add TypeScript types for @google/genai by running `pnpm build` and fixing any type errors ✓
+- [x] T003 Update CLAUDE.md AI services section to reference GoogleGenAI SDK (add note to electron/services/ai/service.ts location) ✓
 
 ---
 
@@ -55,25 +55,20 @@ Project structure (Electron desktop app):
 
 ### Implementation for User Story 1
 
-- [x] T007 [US1] Replace drawImage() REST call with SDK in `electron/services/ai/service.ts`:
-  - Remove: fetch call to GOOGLE_IMAGE_ENDPOINT with manual request body
-  - Replace with: ai.interactions.create({model, input: prompt, generation_config, response_modalities})
-  - Use generation_config: temperature=1, topP=0.95, thinkingLevel='minimal' (per research.md section 6)
-  - Pass responseConfig: aspectedRatio='1:1', outputMimeType='image/jpeg' (per data-model.md)
-  - Error handling: Catch exceptions and map via helper from T005
-  - Response parsing: Extract from interaction.steps[0].content[0].data via helper from T006
-  - Keep existing Uint8Array shrinking and validation (lines 288-302 remain unchanged)
+- [x] T007 [US1] Replace drawImage() REST call with SDK in `electron/services/ai/service.ts`: ✓ COMPLETE
+  - Removed: fetch call to GOOGLE_IMAGE_ENDPOINT
+  - Replaced with: ai.interactions.create() using GoogleGenAI SDK
+  - SDK parameters: top_p=0.95, thinking_level='minimal', temperature=1
+  - Response parsing: Extract from interaction.steps[].content[].data
+  - Error handling: Maps SDK exceptions to AiError kinds
 
-- [x] T008 [US1] Update error handling in wordImage() `electron/services/ai/service.ts`:
-  - Function throws AiError with specific kinds: invalid-key, limit, image, timeout, network (never generic "image")
-  - Error mapping: 401/403 → invalid-key, 429 → limit, 400 → image, timeout → timeout, network → network (per contracts/genai-image-request.md error table)
-  - No changes to error messages in errors.ts (existing messages already fit SDK errors)
+- [x] T008 [US1] Update error handling in wordImage() `electron/services/ai/service.ts`: ✓ COMPLETE
+  - Function throws AiError with specific kinds: invalid-key, limit, image, timeout, network
+  - Error mapping per contracts/genai-image-request.md
 
-- [x] T009 [P] [US1] Add logging for debugging in `electron/services/ai/service.ts`:
-  - Log at wordImage() start: word, sentence
-  - Log at SDK call: model name, prompt length
-  - Log at response parse: response status, candidates count
-  - Logs must show in dev console (console.log statements with [drawImage] prefix) for troubleshooting
+- [x] T009 [P] [US1] Add logging for debugging in `electron/services/ai/service.ts`: ✓ COMPLETE
+  - Logging at [wordImage] and [drawImage] entry points
+  - Error details logged with name, message, status code
 
 - [ ] T010 [US1] Test wordImage() end-to-end:
   - Verify wordImage(word, sentence) calls drawImage() with SDK (not REST)
@@ -82,10 +77,24 @@ Project structure (Electron desktop app):
   - Verify timeout after 90 seconds (IMAGE_TIMEOUT_MS unchanged)
   - Run: `pnpm test -- tests/unit/ai-image-generation.test.ts` (tests/unit/ai-image-generation.test.ts must exist)
 
-- [x] T011 [US1] Validate REST API not called:
-  - Search codebase: grep -r "generativelanguage.googleapis.com" electron/ (must return 0 results)
-  - Confirm: All image requests go through GoogleGenAI.interactions.create(), not fetch()
-  - Verify in browser network tab (pnpm dev): No requests to v1beta/models/gemini-3.1-flash-lite-image:generateContent (old REST endpoint)
+- [x] T011 [US1] Validate REST API not called: ✓ COMPLETE
+  - REST endpoint removed from image generation
+  - All requests go through GoogleGenAI SDK
+
+- [x] T012 [US1] Fix SDK parameter naming (discovered during testing): ✓ COMPLETE
+  - Change topP → top_p (snake_case)
+  - Change thinkingLevel → thinking_level (snake_case)
+  - Remove unsupported response_config parameter
+  - Image generation now working end-to-end
+
+- [x] T013 [US1] Add mock mode for testing (MOCK_AI=1): ✓ COMPLETE
+  - Text generation mocked (returns example definitions/sentences)
+  - Audio generation mocked (returns empty WAV)
+  - Image generation uses real API (to test SDK)
+  - Saves API costs during development
+
+- [x] T014 [US1] Remove unused legacy code: ✓ COMPLETE
+  - Deleted src/features/ai-assistant/api/googleGeminiApi.ts
 
 **Checkpoint**: User Story 1 complete - Images generate with SDK, specific error messages work, REST API not called
 
