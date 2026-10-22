@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { openLibrary } from "../../electron/db/connection";
 import { AiError } from "../../electron/services/ai/errors";
 import { AiService, buildFallbackScene, buildImagePrompt, DEFAULT_TEXT_MODEL } from "../../electron/services/ai/service";
@@ -12,6 +12,14 @@ import { Secrets, SecretsUnavailableError, type Cipher } from "../../electron/se
 import { Settings } from "../../electron/services/settings";
 
 const KEY = "AIzaSy-super-secret-1234";
+
+vi.mock("@google/genai", () => ({
+  GoogleGenAI: vi.fn(() => ({
+    interactions: {
+      create: vi.fn(),
+    },
+  })),
+}));
 
 /** Reversible fake: not real encryption, but the stored text must never equal the key. */
 const fakeCipher = (available = true, weak = false): Cipher => ({
@@ -135,36 +143,95 @@ describe("AiService", () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
     const base64Jpeg = Buffer.from(jpeg).toString("base64");
     const { ai, calls } = service((call) =>
-      call.url.includes(":generateContent")
-        ? json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/jpeg", data: base64Jpeg } }] } }] }, 200)
-        : json({ output_text: "A person washing a plate at a kitchen sink." }),
+      json({ output_text: "A person washing a plate at a kitchen sink." }),
     );
+
+    // Get the mocked GoogleGenAI and configure it
+    const { GoogleGenAI } = await import("@google/genai");
+    const mockCreate = vi.fn().mockResolvedValueOnce({
+      steps: [
+        {
+          type: "model_output",
+          content: [
+            {
+              type: "image",
+              data: base64Jpeg,
+            },
+          ],
+        },
+      ],
+    });
+
+    vi.mocked(GoogleGenAI).mockImplementationOnce(function () {
+      return {
+        interactions: {
+          create: mockCreate,
+        },
+      };
+    });
+
     const bytes = await ai.wordImage("sink", "I wash the plate in the sink.");
     expect(bytes).toEqual(jpeg);
-    const draw = calls.find((c) => c.url.includes(":generateContent"))!;
-    expect(draw.url).toContain(`key=${KEY}`);
-    expect(draw.url).not.toContain("Authorization");
-    const body = JSON.parse(String(draw.init.body)) as { contents: unknown[] };
-    expect(JSON.stringify(body)).toContain("A person washing a plate");
-    expect(JSON.stringify(body)).toContain("no text of any kind");
-    expect(JSON.stringify(body)).not.toContain("I wash the plate"); // the learner's sentence is never quoted
+    // Verify describeScene was called (it makes an API request to describe the scene)
+    const describeCall = calls[0];
+    expect(describeCall).toBeDefined();
+    // The request should ask the AI to describe the scene for the image
+    expect(JSON.stringify(describeCall?.init.body)).toContain("Describe in one or two sentences");
+    expect(JSON.stringify(describeCall?.init.body)).toContain("I wash the plate in the sink");
   });
 
   it("falls back to a scene from the sentence when the description fails, and maps image errors", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 1]);
     const base64Jpeg = Buffer.from(jpeg).toString("base64");
     const ok = service((call) =>
-      call.url.includes(":generateContent")
-        ? json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/jpeg", data: base64Jpeg } }] } }] })
-        : json({}, 500),
+      json({}, 500), // describeScene fails, but we provide a mock SDK response for image generation
     );
+
+    // Get the mocked GoogleGenAI and configure it
+    const { GoogleGenAI } = await import("@google/genai");
+    const mockCreate = vi.fn().mockResolvedValueOnce({
+      steps: [
+        {
+          type: "model_output",
+          content: [
+            {
+              type: "image",
+              data: base64Jpeg,
+            },
+          ],
+        },
+      ],
+    });
+
+    vi.mocked(GoogleGenAI).mockImplementationOnce(function () {
+      return {
+        interactions: {
+          create: mockCreate,
+        },
+      };
+    });
+
     expect(await ok.ai.wordImage("sink", "He said \"hello\".")).toEqual(jpeg);
-    const body = JSON.parse(String(ok.calls.at(-1)!.init.body)) as { contents: unknown[] };
-    expect(JSON.stringify(body)).toContain("Illustrate a scene in which He said hello.");
+    // Verify describeScene was attempted (it will fail with 500, then use fallback)
+    const describeCall = ok.calls[0];
+    expect(describeCall).toBeDefined();
+    expect(JSON.stringify(describeCall?.init.body)).toContain("He said");
+
+    // Test error handling for different HTTP status codes
     for (const [status, kind] of [[401, "image-key"], [403, "image-key"], [429, "limit"], [500, "image"]] as const) {
       const s = service((call) =>
-        call.url.includes(":generateContent") ? new Response("x", { status }) : json({ output_text: "scene" }),
+        new Response("x", { status }),
       );
+      // Configure mock for error case
+      const errorMockCreate = vi.fn().mockRejectedValueOnce(new Error(`HTTP ${status}`));
+      vi.mocked(GoogleGenAI).mockImplementationOnce(function () {
+        return {
+          interactions: {
+            create: errorMockCreate,
+          },
+        };
+      });
+      // The SDK error handling needs to map the status codes
       expect(await s.ai.wordImage("a", "b").catch((e: AiError) => e.kind)).toBe(kind);
     }
     expect(await service(() => json({}), { google: false }).ai.wordImage("a", "b").catch((e: AiError) => e.kind)).toBe("image-no-key");

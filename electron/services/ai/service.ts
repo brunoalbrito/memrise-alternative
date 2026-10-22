@@ -239,6 +239,10 @@ export class AiService {
   /** Picture for a sentence: describe the scene (fallback on failure), then draw it using Nano Banana/Gemini. Returns JPEG bytes. */
   async wordImage(word: string, sentence: string): Promise<Uint8Array> {
     console.log("[wordImage] Start", { word, sentence });
+    // Mock mode for testing (set MOCK_AI=1 to skip API calls)
+    if (process.env.MOCK_AI === "1") {
+      return new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0]);
+    }
     const key = this.secrets.reveal("google");
     console.log("[wordImage] Key retrieved:", key ? "yes" : "no");
     if (key === null) throw new AiError("image-no-key");
@@ -281,7 +285,7 @@ export class AiService {
       if (error instanceof Error) {
         const message = error.message || "";
         if (message.includes("401") || message.includes("403") || message.includes("authentication")) {
-          throw new AiError("invalid-key");
+          throw new AiError("image-key");
         }
         if (message.includes("429") || message.includes("quota") || message.includes("limit")) {
           throw new AiError("limit");
@@ -291,7 +295,7 @@ export class AiService {
         }
       }
       if (error instanceof DOMException && error.name === "TimeoutError") throw new AiError("timeout");
-      throw new AiError("network");
+      throw new AiError("image");
     }
 
     // Extract image from SDK response: interaction.steps[].content[].data
