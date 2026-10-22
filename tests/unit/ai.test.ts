@@ -142,7 +142,7 @@ describe("AiService", () => {
   it("draws an image with the Google key in query param, describing the scene first", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
     const base64Jpeg = Buffer.from(jpeg).toString("base64");
-    const { ai, calls } = service((call) =>
+    const { ai, calls } = service(() =>
       json({ output_text: "A person washing a plate at a kitchen sink." }),
     );
 
@@ -183,7 +183,7 @@ describe("AiService", () => {
   it("falls back to a scene from the sentence when the description fails, and maps image errors", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 1]);
     const base64Jpeg = Buffer.from(jpeg).toString("base64");
-    const ok = service((call) =>
+    const ok = service(() =>
       json({}, 500), // describeScene fails, but we provide a mock SDK response for image generation
     );
 
@@ -219,7 +219,7 @@ describe("AiService", () => {
 
     // Test error handling for different HTTP status codes
     for (const [status, kind] of [[401, "image-key"], [403, "image-key"], [429, "limit"], [500, "image"]] as const) {
-      const s = service((call) =>
+      const s = service(() =>
         new Response("x", { status }),
       );
       // Configure mock for error case
