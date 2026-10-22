@@ -275,7 +275,7 @@ export class AiService {
           thinking_level: "minimal",
         },
         response_modalities: ["image"],
-      } as Record<string, unknown>);
+      });
     } catch (error) {
       console.log("[drawImage] SDK error:", error);
       if (error instanceof Error) {
