@@ -43,33 +43,64 @@ jobs:
             fi
           fi
 
-      - name: Detect semantic version
+      - name: Calculate next semantic version
         id: semantic
         if: steps.check-commits.outputs.should-release == 'true'
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           COMMITS=$(git log ${LAST_TAG}...HEAD --pretty=%B)
-          
+
+          # Parse current version
+          MAJOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f1)
+          MINOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f2)
+          PATCH=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f3 | cut -d- -f1)
+
           # Determine version type (major > minor > patch)
           if echo "$COMMITS" | grep -qE "BREAKING CHANGE|^feat!:|^fix!:"; then
-            echo "version-type=major" >> $GITHUB_OUTPUT
+            VERSION_TYPE="major"
+            NEW_MAJOR=$((MAJOR + 1))
+            NEW_MINOR=0
+            NEW_PATCH=0
           elif echo "$COMMITS" | grep -q "^feat:"; then
-            echo "version-type=minor" >> $GITHUB_OUTPUT
+            VERSION_TYPE="minor"
+            NEW_MAJOR=$MAJOR
+            NEW_MINOR=$((MINOR + 1))
+            NEW_PATCH=0
           elif echo "$COMMITS" | grep -q "^fix:"; then
-            echo "version-type=patch" >> $GITHUB_OUTPUT
+            VERSION_TYPE="patch"
+            NEW_MAJOR=$MAJOR
+            NEW_MINOR=$MINOR
+            NEW_PATCH=$((PATCH + 1))
           else
-            echo "version-type=none" >> $GITHUB_OUTPUT
+            VERSION_TYPE="none"
           fi
-          
+
+          # Build new version tag
+          if [ "$VERSION_TYPE" != "none" ]; then
+            NEW_VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+          else
+            NEW_VERSION=$LAST_TAG
+          fi
+
           # Determine if pre-release based on branch
           if [ "$GITHUB_REF" == "refs/heads/main" ]; then
-            echo "is-prerelease=false" >> $GITHUB_OUTPUT
+            IS_PRERELEASE="false"
           else
-            echo "is-prerelease=true" >> $GITHUB_OUTPUT
+            IS_PRERELEASE="true"
+            NEW_VERSION="${NEW_VERSION}-beta.1"
           fi
-          
-          # For demo: generate version (simplified)
-          echo "new-version=v1.0.0" >> $GITHUB_OUTPUT
+
+          echo "version-type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "last-tag=$LAST_TAG" >> $GITHUB_OUTPUT
+
+          echo "✓ Version calculation:"
+          echo "  Last tag: $LAST_TAG"
+          echo "  Commits: $(echo \"$COMMITS\" | wc -l)"
+          echo "  Version type: $VERSION_TYPE"
+          echo "  New version: $NEW_VERSION"
+          echo "  Pre-release: $IS_PRERELEASE"
 
   # Job 2: Build macOS Installer (runs only if should-release=true)
   build-macos:
@@ -136,10 +167,13 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Install pnpm & semantic-release
-        run: |
-          npm install -g pnpm
-          pnpm install --frozen-lockfile
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '12'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -147,22 +181,69 @@ jobs:
           name: macos-installer
           path: release/mac-universal/
 
-      - name: Configure Git for semantic-release
+      - name: Configure Git for release
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
-      - name: Create release with semantic-release
-        run: pnpm exec semantic-release
+      - name: Generate changelog
+        id: changelog
+        run: |
+          LAST_TAG="${{ needs.detect-version.outputs.last-tag }}"
+          NEW_VERSION="${{ needs.detect-version.outputs.new-version }}"
+
+          if [ -z "$LAST_TAG" ] || [ "$LAST_TAG" == "v0.0.0" ]; then
+            CHANGELOG="Initial release"
+          else
+            CHANGELOG=$(git log ${LAST_TAG}...HEAD --pretty=format:"- %s (%h)" | grep -E "^- (feat|fix|perf):" || echo "- Release $NEW_VERSION")
+          fi
+
+          # Create CHANGELOG.md entry
+          {
+            echo "## $NEW_VERSION ($(date -u +'%Y-%m-%d'))"
+            echo ""
+            echo "$CHANGELOG"
+            echo ""
+            if [ -f CHANGELOG.md ]; then
+              tail -n +1 CHANGELOG.md
+            fi
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+
+          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md
+
+      - name: Create Git tag
+        run: |
+          NEW_VERSION="${{ needs.detect-version.outputs.new-version }}"
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+          git push origin "$NEW_VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.detect-version.outputs.new-version }}
+          name: "Release ${{ needs.detect-version.outputs.new-version }}"
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: ${{ needs.detect-version.outputs.is-prerelease == 'true' }}
+          files: |
+            release/mac-universal/*.dmg
+            release/mac-universal/*.pkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release summary
         if: success()
         run: |
-          echo "✅ Release created successfully"
+          echo "✅ Release created successfully!"
+          echo ""
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
-          echo "🔗 Release: ${{ github.server_url }}/${{ github.repository }}/releases"
+          echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
+          echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
+          echo "📥 Installer: release/mac-universal/"
+          echo ""
+          echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
   # Job 4: Cleanup on failure
   cleanup-on-failure:
