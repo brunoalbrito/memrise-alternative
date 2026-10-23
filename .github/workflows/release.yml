@@ -154,13 +154,8 @@ jobs:
       - name: TypeScript compilation
         run: pnpm run build
 
-      - name: Build macOS installers (arm64)
-        run: pnpm build && pnpm exec electron-builder --publish=never --arch arm64
-        env:
-          CI: true
-
-      - name: Build macOS installers (x86_64)
-        run: pnpm exec electron-builder --publish=never --arch x64
+      - name: Build macOS universal installer
+        run: pnpm build && pnpm exec electron-builder --publish=never --universal
         env:
           CI: true
 
@@ -169,25 +164,18 @@ jobs:
           echo "Listing release directory:"
           ls -lah release/
 
-          # Check for arm64 artifacts
-          if [ ! -f release/mac-arm64/*.dmg ]; then
-            echo "❌ DMG file not found in release/mac-arm64/"
+          if [ ! -f release/mac-universal/*.dmg ]; then
+            echo "❌ DMG file not found in release/mac-universal/"
             exit 1
           fi
 
-          # Check for x86_64 artifacts
-          if [ ! -f release/mac-x64/*.dmg ]; then
-            echo "❌ DMG file not found in release/mac-x64/"
-            exit 1
-          fi
-
-          echo "✓ Build artifacts verified for both architectures"
+          echo "✓ Universal build artifacts verified"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installers
-          path: release/mac-*/
+          name: macos-installer
+          path: release/mac-universal/
           retention-days: 5
 
   # Job 3: Create GitHub Release with Assets
@@ -218,8 +206,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-installers
-          path: release/
+          name: macos-installer
+          path: release/mac-universal/
 
       - name: Configure Git for release
         run: |
@@ -268,10 +256,8 @@ jobs:
           draft: false
           prerelease: ${{ needs.detect-version.outputs.is-prerelease == 'true' }}
           files: |
-            release/mac-arm64/*.dmg
-            release/mac-arm64/*.zip
-            release/mac-x64/*.dmg
-            release/mac-x64/*.zip
+            release/mac-universal/*.dmg
+            release/mac-universal/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -283,9 +269,7 @@ jobs:
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
           echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
           echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
-          echo "📥 Installers:"
-          echo "   • arm64 (Apple Silicon): release/mac-arm64/"
-          echo "   • x86_64 (Intel): release/mac-x64/"
+          echo "📥 Installer: release/mac-universal/ (works on Apple Silicon & Intel)"
           echo ""
           echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
