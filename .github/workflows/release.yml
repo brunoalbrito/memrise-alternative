@@ -164,8 +164,8 @@ jobs:
           echo "Listing release directory:"
           ls -lah release/
 
-          if [ ! -f release/mac-arm64/*.dmg ]; then
-            echo "❌ DMG file not found in release/mac-arm64/"
+          if [ ! -f release/MemBetter-*-arm64*.dmg ]; then
+            echo "❌ DMG file not found in release/"
             exit 1
           fi
 
@@ -175,7 +175,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-arm64/
+          path: release/MemBetter-*-arm64*
           retention-days: 5
 
   # Job 3: Create GitHub Release with Assets
@@ -207,7 +207,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-arm64/
+          path: release/
 
       - name: Configure Git for release
         run: |
@@ -256,8 +256,8 @@ jobs:
           draft: false
           prerelease: ${{ needs.detect-version.outputs.is-prerelease == 'true' }}
           files: |
-            release/mac-arm64/*.dmg
-            release/mac-arm64/*.zip
+            release/MemBetter-*-arm64*.dmg
+            release/MemBetter-*-arm64*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -269,7 +269,7 @@ jobs:
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
           echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
           echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
-          echo "📥 Installer: release/mac-arm64/ (Apple Silicon)"
+          echo "📥 Installer: MemBetter-*-arm64.dmg (Apple Silicon)"
           echo ""
           echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
