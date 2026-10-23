@@ -31,24 +31,45 @@ jobs:
         id: check-commits
         run: |
           # Check if any commits since last tag have feat:, fix:, or BREAKING CHANGE
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          LAST_TAG=$(git tag -l | sort -V | tail -1)
+
+          # If no tags exist, check all commits; otherwise check commits since tag
           if [ -z "$LAST_TAG" ]; then
-            echo "should-release=true" >> $GITHUB_OUTPUT
+            # First release - check all commits
+            COMMITS=$(git log --pretty=%B)
+            RANGE_DESC="all commits"
           else
+            # Check commits since last tag
             COMMITS=$(git log ${LAST_TAG}...HEAD --pretty=%B)
-            if echo "$COMMITS" | grep -qE "^feat:|^fix:|BREAKING CHANGE"; then
-              echo "should-release=true" >> $GITHUB_OUTPUT
-            else
-              echo "should-release=false" >> $GITHUB_OUTPUT
-            fi
+            RANGE_DESC="commits since ${LAST_TAG}"
+          fi
+
+          # Check for versionable commit types
+          if echo "$COMMITS" | grep -qE "^feat:|^fix:|BREAKING CHANGE"; then
+            echo "should-release=true" >> $GITHUB_OUTPUT
+            echo "✅ Found versionable commits ($RANGE_DESC)"
+          else
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "⏭️  No versionable commits ($RANGE_DESC) - skipping release"
           fi
 
       - name: Calculate next semantic version
         id: semantic
         if: steps.check-commits.outputs.should-release == 'true'
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          COMMITS=$(git log ${LAST_TAG}...HEAD --pretty=%B)
+          # Get last tag or use v0.0.0 as baseline for first release
+          LAST_TAG=$(git tag -l | sort -V | tail -1)
+          if [ -z "$LAST_TAG" ]; then
+            LAST_TAG="v0.0.0"
+          fi
+          echo "Last tag: $LAST_TAG"
+
+          # Get commits since last tag (or all commits if first release)
+          if [ "$LAST_TAG" == "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=%B)
+          else
+            COMMITS=$(git log ${LAST_TAG}...HEAD --pretty=%B)
+          fi
 
           # Parse current version
           MAJOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f1)
