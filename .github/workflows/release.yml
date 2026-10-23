@@ -154,8 +154,8 @@ jobs:
       - name: TypeScript compilation
         run: pnpm run build
 
-      - name: Build macOS installer
-        run: pnpm build && pnpm exec electron-builder --publish=never
+      - name: Build macOS universal installer
+        run: pnpm build && pnpm exec electron-builder --publish=never --universal
         env:
           CI: true
 
@@ -164,18 +164,18 @@ jobs:
           echo "Listing release directory:"
           ls -lah release/
 
-          if [ ! -f release/mac-arm64/*.dmg ]; then
-            echo "❌ DMG file not found in release/mac-arm64/"
+          if [ ! -f release/mac-universal/*.dmg ]; then
+            echo "❌ DMG file not found in release/mac-universal/"
             exit 1
           fi
 
-          echo "✓ Build artifacts verified"
+          echo "✓ Universal build artifacts verified"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-arm64/
+          path: release/mac-universal/
           retention-days: 5
 
   # Job 3: Create GitHub Release with Assets
@@ -207,7 +207,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-arm64/
+          path: release/mac-universal/
 
       - name: Configure Git for release
         run: |
@@ -256,8 +256,8 @@ jobs:
           draft: false
           prerelease: ${{ needs.detect-version.outputs.is-prerelease == 'true' }}
           files: |
-            release/mac-arm64/*.dmg
-            release/mac-arm64/*.zip
+            release/mac-universal/*.dmg
+            release/mac-universal/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -269,7 +269,7 @@ jobs:
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
           echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
           echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
-          echo "📥 Installer: release/mac-arm64/ (Apple Silicon)"
+          echo "📥 Installer: release/mac-universal/ (Apple Silicon & Intel)"
           echo ""
           echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
