@@ -8,6 +8,8 @@
     "node": ">=22.22"
   },
   "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "predev": "node scripts/ensure-electron.js",
     "dev": "electron-vite dev",
     "build": "tsc -b && electron-vite build",
     "preview": "electron-vite preview",
