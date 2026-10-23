@@ -154,25 +154,40 @@ jobs:
       - name: TypeScript compilation
         run: pnpm run build
 
-      - name: Build macOS installer
-        run: pnpm build && pnpm exec electron-builder --publish=never
+      - name: Build macOS installers (arm64)
+        run: pnpm build && pnpm exec electron-builder --publish=never --arch arm64
+        env:
+          CI: true
+
+      - name: Build macOS installers (x86_64)
+        run: pnpm exec electron-builder --publish=never --arch x64
         env:
           CI: true
 
       - name: Verify build artifacts
         run: |
+          echo "Listing release directory:"
           ls -lah release/
+
+          # Check for arm64 artifacts
           if [ ! -f release/mac-arm64/*.dmg ]; then
             echo "❌ DMG file not found in release/mac-arm64/"
             exit 1
           fi
-          echo "✓ Build artifacts verified"
+
+          # Check for x86_64 artifacts
+          if [ ! -f release/mac-x64/*.dmg ]; then
+            echo "❌ DMG file not found in release/mac-x64/"
+            exit 1
+          fi
+
+          echo "✓ Build artifacts verified for both architectures"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installer
-          path: release/mac-arm64/
+          name: macos-installers
+          path: release/mac-*/
           retention-days: 5
 
   # Job 3: Create GitHub Release with Assets
@@ -203,8 +218,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-installer
-          path: release/mac-arm64/
+          name: macos-installers
+          path: release/
 
       - name: Configure Git for release
         run: |
@@ -255,6 +270,8 @@ jobs:
           files: |
             release/mac-arm64/*.dmg
             release/mac-arm64/*.zip
+            release/mac-x64/*.dmg
+            release/mac-x64/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -266,7 +283,9 @@ jobs:
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
           echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
           echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
-          echo "📥 Installer: release/mac-arm64/"
+          echo "📥 Installers:"
+          echo "   • arm64 (Apple Silicon): release/mac-arm64/"
+          echo "   • x86_64 (Intel): release/mac-x64/"
           echo ""
           echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
