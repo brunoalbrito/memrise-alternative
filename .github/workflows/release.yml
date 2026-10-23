@@ -57,50 +57,53 @@ jobs:
         id: semantic
         if: steps.check-commits.outputs.should-release == 'true'
         run: |
-          # Get last tag or use v0.0.0 as baseline for first release
+          # Get last tag
           LAST_TAG=$(git tag -l | sort -V | tail -1)
+          IS_FIRST_RELEASE=false
+
           if [ -z "$LAST_TAG" ]; then
-            LAST_TAG="v0.0.0"
-          fi
-          echo "Last tag: $LAST_TAG"
-
-          # Get commits since last tag (or all commits if first release)
-          if [ "$LAST_TAG" == "v0.0.0" ]; then
-            COMMITS=$(git log --pretty=%B)
+            # First release - use v0.0.0
+            IS_FIRST_RELEASE=true
+            NEW_VERSION="v0.0.0"
+            VERSION_TYPE="initial"
+            echo "First release detected - using v0.0.0"
           else
+            echo "Last tag: $LAST_TAG"
+
+            # Get commits since last tag
             COMMITS=$(git log ${LAST_TAG}...HEAD --pretty=%B)
-          fi
 
-          # Parse current version
-          MAJOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f1)
-          MINOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f2)
-          PATCH=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f3 | cut -d- -f1)
+            # Parse current version
+            MAJOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f1)
+            MINOR=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f2)
+            PATCH=$(echo $LAST_TAG | sed 's/^v//' | cut -d. -f3 | cut -d- -f1)
 
-          # Determine version type (major > minor > patch)
-          if echo "$COMMITS" | grep -qE "BREAKING CHANGE|^feat!:|^fix!:"; then
-            VERSION_TYPE="major"
-            NEW_MAJOR=$((MAJOR + 1))
-            NEW_MINOR=0
-            NEW_PATCH=0
-          elif echo "$COMMITS" | grep -q "^feat:"; then
-            VERSION_TYPE="minor"
-            NEW_MAJOR=$MAJOR
-            NEW_MINOR=$((MINOR + 1))
-            NEW_PATCH=0
-          elif echo "$COMMITS" | grep -q "^fix:"; then
-            VERSION_TYPE="patch"
-            NEW_MAJOR=$MAJOR
-            NEW_MINOR=$MINOR
-            NEW_PATCH=$((PATCH + 1))
-          else
-            VERSION_TYPE="none"
-          fi
+            # Determine version type (major > minor > patch)
+            if echo "$COMMITS" | grep -qE "BREAKING CHANGE|^feat!:|^fix!:"; then
+              VERSION_TYPE="major"
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_MINOR=0
+              NEW_PATCH=0
+            elif echo "$COMMITS" | grep -q "^feat:"; then
+              VERSION_TYPE="minor"
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$((MINOR + 1))
+              NEW_PATCH=0
+            elif echo "$COMMITS" | grep -q "^fix:"; then
+              VERSION_TYPE="patch"
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$MINOR
+              NEW_PATCH=$((PATCH + 1))
+            else
+              VERSION_TYPE="none"
+            fi
 
-          # Build new version tag
-          if [ "$VERSION_TYPE" != "none" ]; then
-            NEW_VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
-          else
-            NEW_VERSION=$LAST_TAG
+            # Build new version tag
+            if [ "$VERSION_TYPE" != "none" ]; then
+              NEW_VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+            else
+              NEW_VERSION=$LAST_TAG
+            fi
           fi
 
           # Determine if pre-release based on branch
@@ -108,7 +111,9 @@ jobs:
             IS_PRERELEASE="false"
           else
             IS_PRERELEASE="true"
-            NEW_VERSION="${NEW_VERSION}-beta.1"
+            if [ "$IS_FIRST_RELEASE" == "false" ]; then
+              NEW_VERSION="${NEW_VERSION}-beta.1"
+            fi
           fi
 
           echo "version-type=$VERSION_TYPE" >> $GITHUB_OUTPUT
@@ -117,8 +122,7 @@ jobs:
           echo "last-tag=$LAST_TAG" >> $GITHUB_OUTPUT
 
           echo "✓ Version calculation:"
-          echo "  Last tag: $LAST_TAG"
-          echo "  Commits: $(echo \"$COMMITS\" | wc -l)"
+          echo "  Last tag: ${LAST_TAG:-none}"
           echo "  Version type: $VERSION_TYPE"
           echo "  New version: $NEW_VERSION"
           echo "  Pre-release: $IS_PRERELEASE"
