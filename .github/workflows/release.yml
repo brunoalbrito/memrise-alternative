@@ -161,9 +161,9 @@ jobs:
 
       - name: Verify build artifacts
         run: |
-          ls -lah release/mac-universal/
-          if [ ! -f release/mac-universal/*.dmg ]; then
-            echo "❌ DMG file not found in release/mac-universal/"
+          ls -lah release/
+          if [ ! -f release/mac-arm64/*.dmg ]; then
+            echo "❌ DMG file not found in release/mac-arm64/"
             exit 1
           fi
           echo "✓ Build artifacts verified"
@@ -172,7 +172,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-universal/
+          path: release/mac-arm64/
           retention-days: 5
 
   # Job 3: Create GitHub Release with Assets
@@ -204,7 +204,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-installer
-          path: release/mac-universal/
+          path: release/mac-arm64/
 
       - name: Configure Git for release
         run: |
@@ -253,8 +253,8 @@ jobs:
           draft: false
           prerelease: ${{ needs.detect-version.outputs.is-prerelease == 'true' }}
           files: |
-            release/mac-universal/*.dmg
-            release/mac-universal/*.pkg
+            release/mac-arm64/*.dmg
+            release/mac-arm64/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -266,7 +266,7 @@ jobs:
           echo "📦 Version: ${{ needs.detect-version.outputs.new-version }}"
           echo "🏷️  Type: ${{ needs.detect-version.outputs.version-type }}"
           echo "🔓 Pre-release: ${{ needs.detect-version.outputs.is-prerelease }}"
-          echo "📥 Installer: release/mac-universal/"
+          echo "📥 Installer: release/mac-arm64/"
           echo ""
           echo "🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.detect-version.outputs.new-version }}"
 
