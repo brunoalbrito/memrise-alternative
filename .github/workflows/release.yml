@@ -155,7 +155,7 @@ jobs:
         run: pnpm run build
 
       - name: Build macOS installer
-        run: pnpm build && electron-builder --publish=never
+        run: pnpm build && pnpm exec electron-builder --publish=never
         env:
           CI: true
 
