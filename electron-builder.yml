@@ -22,7 +22,6 @@ mac:
   hardenedRuntime: true
   # Signing and notarization use CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID
   # when they are set (see .github/workflows/release.yml); without them an unsigned build is produced.
-  x64ArchFiles: "**/*.node"
 win:
   target: nsis
 nsis:
