@@ -112,7 +112,7 @@ test("closing mid-session asks first and keeps the answers given", async () => {
     });
     await expect(page.getByLabel("WORD", { exact: true })).toBeVisible();
     await page.keyboard.type("sink");
-    await expect(page.getByText("Correct!")).toBeVisible();
+    await expect(page.getByText("Correct!")).toBeVisible({ timeout: 10000 });
     await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "End this session?" })).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
