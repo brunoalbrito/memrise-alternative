@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { launch } from './launch';
+import { launch, cleanup } from './launch';
 
 /**
  * E2E tests for skip-AI feature
@@ -39,9 +39,9 @@ async function setupEditorWithCourse(page: Page): Promise<void> {
 
 test.describe('Skip AI Generation Feature', () => {
   test('T026: User pre-fills Meaning, AI skips regenerating it', async () => {
-    const app = await launch();
+    const launched = await launch();
+    const { page, userData } = launched;
     try {
-      const { page } = app;
       await setupEditorWithCourse(page);
 
       // Add a level first
@@ -86,14 +86,15 @@ test.describe('Skip AI Generation Feature', () => {
       const ipaValue = await ipaInput.inputValue();
       expect(ipaValue.length).toBeGreaterThan(0);
     } finally {
-      await app.close();
+      await launched.close();
+      cleanup(userData);
     }
   });
 
   test('T027: Skip badge appears on skipped field', async () => {
-    const app = await launch();
+    const launched = await launch();
+    const { page, userData } = launched;
     try {
-      const { page } = app;
       await setupEditorWithCourse(page);
 
       // Add a level and word
@@ -136,14 +137,15 @@ test.describe('Skip AI Generation Feature', () => {
       const tooltip = await badge.getAttribute('title');
       expect(tooltip).toContain('This field was not regenerated');
     } finally {
-      await app.close();
+      await launched.close();
+      cleanup(userData);
     }
   });
 
   test('T027b: Badge disappears when user edits field', async () => {
-    const app = await launch();
+    const launched = await launch();
+    const { page, userData } = launched;
     try {
-      const { page } = app;
       await setupEditorWithCourse(page);
 
       // Add a level and word
@@ -183,14 +185,15 @@ test.describe('Skip AI Generation Feature', () => {
       // Badge should disappear (field cleared from skip tracking)
       await expect(badge).not.toBeVisible();
     } finally {
-      await app.close();
+      await launched.close();
+      cleanup(userData);
     }
   });
 
   test('Scenario: Multiple fields pre-filled, only empty fields generated', async () => {
-    const app = await launch();
+    const launched = await launch();
+    const { page, userData } = launched;
     try {
-      const { page } = app;
       await setupEditorWithCourse(page);
 
       // Add a level and word
@@ -236,14 +239,15 @@ test.describe('Skip AI Generation Feature', () => {
       const exampleValue = await exampleInput.inputValue();
       expect(exampleValue.length).toBeGreaterThan(0);
     } finally {
-      await app.close();
+      await launched.close();
+      cleanup(userData);
     }
   });
 
   test('Scenario: All fields pre-filled, no AI call made', async () => {
-    const app = await launch();
+    const launched = await launch();
+    const { page, userData } = launched;
     try {
-      const { page } = app;
       await setupEditorWithCourse(page);
 
       // Add a level and word
@@ -280,7 +284,8 @@ test.describe('Skip AI Generation Feature', () => {
       expect(await ipaInput.inputValue()).toBe('aul');
       expect(await exampleInput.inputValue()).toBe('The owl hooted at night');
     } finally {
-      await app.close();
+      await launched.close();
+      cleanup(userData);
     }
   });
 });
