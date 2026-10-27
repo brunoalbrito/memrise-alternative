@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "../../../shared/ui/IconButton";
 import { AutoFill, type AutoFillResult, useSkipFeedbackStore } from "../../ai-assistant";
+import type { FieldName } from "../../ai-assistant/types/skipAI";
 import { DeleteIcon } from "../../../shared/ui/icons";
 import type { MediaRef, Word } from "../../home";
 import type { MediaKind } from "../model/levelOps";
@@ -42,7 +43,7 @@ export function WordRow({
 
   // Get skipped fields for this word from store
   const skippedFields = useSkipFeedbackStore((state) => state.getSkipped(word.id)) ?? [];
-  const isFieldSkipped = (field: string) => skippedFields.includes(field as any);
+  const isFieldSkipped = (field: FieldName) => skippedFields.includes(field);
 
   useEffect(() => {
     if (autoFocus) wordRef.current?.focus();
