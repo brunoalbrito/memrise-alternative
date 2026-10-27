@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "../../../shared/ui/IconButton";
-import { AutoFill, type AutoFillResult } from "../../ai-assistant";
+import { AutoFill, type AutoFillResult, useSkipFeedbackStore } from "../../ai-assistant";
 import { DeleteIcon } from "../../../shared/ui/icons";
 import type { MediaRef, Word } from "../../home";
 import type { MediaKind } from "../model/levelOps";
 import { MediaCell } from "./MediaCell";
+import { SkippedFieldBadge } from "./SkippedFieldBadge";
 
 interface WordRowProps {
   word: Word;
@@ -39,6 +40,10 @@ export function WordRow({
   const missing = touched && word.text.trim() === "";
   const errorId = `word-error-${word.id}`;
 
+  // Get skipped fields for this word from store
+  const skippedFields = useSkipFeedbackStore((state) => state.getSkipped(word.id)) ?? [];
+  const isFieldSkipped = (field: string) => skippedFields.includes(field as any);
+
   useEffect(() => {
     if (autoFocus) wordRef.current?.focus();
   }, [autoFocus]);
@@ -69,34 +74,50 @@ export function WordRow({
         <MediaCellSlot kind="audio" word={word} onAdd={onAddMedia} onRemove={onRemoveMedia} />
       </td>
       <td className="min-w-32 px-2 py-3">
-        <input
-          aria-label="IPA"
-          value={ipaFocused ? ipa : ipa ? `/${ipa}/` : ""}
-          onFocus={() => setIpaFocused(true)}
-          onBlur={() => setIpaFocused(false)}
-          onChange={(event) =>
-            onChange({ ipa: event.target.value.trim().replace(/^\/+|\/+$/g, "") })
-          }
-          className={fieldClasses}
-        />
+        <div className="flex items-center gap-1">
+          <input
+            aria-label="IPA"
+            value={ipaFocused ? ipa : ipa ? `/${ipa}/` : ""}
+            onFocus={() => setIpaFocused(true)}
+            onBlur={() => setIpaFocused(false)}
+            onChange={(event) => {
+              onChange({ ipa: event.target.value.trim().replace(/^\/+|\/+$/g, "") });
+              useSkipFeedbackStore.getState().clearSkipped(word.id);
+            }}
+            className={fieldClasses}
+          />
+          <SkippedFieldBadge isSkipped={isFieldSkipped('ipa')} />
+        </div>
       </td>
       <td className="min-w-48 px-2 py-3">
-        <textarea
-          aria-label="Meaning"
-          rows={2}
-          value={word.meaning}
-          onChange={(event) => onChange({ meaning: event.target.value })}
-          className={`${fieldClasses} resize-y`}
-        />
+        <div className="flex items-start gap-1">
+          <textarea
+            aria-label="Meaning"
+            rows={2}
+            value={word.meaning}
+            onChange={(event) => {
+              onChange({ meaning: event.target.value });
+              useSkipFeedbackStore.getState().clearSkipped(word.id);
+            }}
+            className={`${fieldClasses} resize-y`}
+          />
+          <SkippedFieldBadge isSkipped={isFieldSkipped('meaning')} />
+        </div>
       </td>
       <td className="min-w-40 px-2 py-3">
-        <textarea
-          aria-label="Example"
-          rows={2}
-          value={word.example}
-          onChange={(event) => onChange({ example: event.target.value })}
-          className={`${fieldClasses} resize-y`}
-        />
+        <div className="flex items-start gap-1">
+          <textarea
+            aria-label="Example"
+            rows={2}
+            value={word.example}
+            onChange={(event) => {
+              onChange({ example: event.target.value });
+              useSkipFeedbackStore.getState().clearSkipped(word.id);
+            }}
+            className={`${fieldClasses} resize-y`}
+          />
+          <SkippedFieldBadge isSkipped={isFieldSkipped('example')} />
+        </div>
       </td>
       {showAttributes && (
         <td className="min-w-40 px-2 py-3 text-label-medium text-on-surface-variant">

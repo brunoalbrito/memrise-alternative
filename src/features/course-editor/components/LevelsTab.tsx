@@ -3,8 +3,9 @@ import { Button } from "../../../shared/ui/Button";
 import { AddIcon } from "../../../shared/ui/icons";
 import { storageWritable } from "../../../shared/storage/storageWritable";
 import { putMedia } from "../../../shared/media/mediaStore";
-import { AiSettingsButton, type AutoFillResult } from "../../ai-assistant";
-import { getCourseLevels, languages, type Course, type MediaRef } from "../../home";
+import { AiSettingsButton, type AutoFillResult, useSkipFeedbackStore } from "../../ai-assistant";
+import { detectFilledFields } from "../../ai-assistant/utils/fieldDetection";
+import { getCourseLevels, languages, type Course, type MediaRef, type Word } from "../../home";
 import { useLevels } from "../hooks/useLevels";
 import * as ops from "../model/levelOps";
 import { validateMediaFile } from "../model/mediaRules";
@@ -75,28 +76,40 @@ export function LevelsTab({ course }: { course: Course }) {
 
   /** Fills Meaning, Example and IPA from an AI suggestion and attaches its audio and image when possible. */
   const applyAutoFill = async (levelId: string, wordId: string, result: AutoFillResult) => {
-    if (
-      !run((current) =>
-        ops.updateWord(current, levelId, wordId, {
-          meaning: result.definition,
-          example: result.sentence,
-          ipa: result.ipa,
-        }),
-      )
-    ) {
-      return;
-    }
     const word = getCourseLevels(course.id)
       .find((item) => item.id === levelId)
       ?.words.find((item) => item.id === wordId);
     if (!word) return;
+
+    // Detect which fields are already filled by user
+    const filledFields = detectFilledFields(word);
+
+    // Only apply AI suggestions to empty fields (skip pre-filled)
+    const patch: Partial<Pick<Word, "text" | "meaning" | "example" | "ipa">> = {};
+    if (!filledFields.includes('meaning')) {
+      patch.meaning = result.definition;
+    }
+    if (!filledFields.includes('example')) {
+      patch.example = result.sentence;
+    }
+    if (!filledFields.includes('ipa')) {
+      patch.ipa = result.ipa;
+    }
+
+    if (!run((current) => ops.updateWord(current, levelId, wordId, patch))) {
+      return;
+    }
+
+    // Track skipped fields for UI feedback
+    useSkipFeedbackStore.getState().setSkippedFields(wordId, filledFields);
+
     const base = slug(word.text);
     const notices: string[] = [];
-    if (result.audio) {
+    if (result.audio && !filledFields.includes('audio')) {
       const notice = await attachBlob(levelId, wordId, "audio", result.audio, `${base}.wav`, "audio/wav");
       if (notice) notices.push(notice);
     }
-    if (result.image) {
+    if (result.image && !filledFields.includes('images')) {
       const notice = await attachBlob(levelId, wordId, "images", result.image, `${base}.jpg`, "image/jpeg");
       if (notice) notices.push(notice);
     }
