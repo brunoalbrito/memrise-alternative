@@ -32,8 +32,9 @@ async function setupEditorWithCourse(page: Page): Promise<void> {
   await page.evaluate(() => {
     location.hash = '#/course/skipai-test/edit';
   });
-  // Wait for editor UI to render (wait for "Add Level" button to appear)
-  await page.waitForSelector('button:has-text("Add Level")', { timeout: 10000 });
+  // Wait for editor to navigate and render - wait for "This course has no levels yet" text to appear
+  // This reliably waits for the SPA navigation to complete
+  await page.getByText('This course has no levels yet').waitFor({ timeout: 10000 });
 }
 
 test.describe('Skip AI Generation Feature', () => {
@@ -43,8 +44,10 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
-      // Wait for level and word form to appear
-      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+      // Add a level first
+      await page.getByRole('button', { name: 'Add Level' }).click();
+      // Add a word
+      await page.getByRole('button', { name: 'Add word' }).click();
 
       // Find word row and fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -93,8 +96,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
-      // Wait for form to render
-      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+      // Add a level and word
+      await page.getByRole('button', { name: 'Add Level' }).click();
+      await page.getByRole('button', { name: 'Add word' }).click();
 
       // Fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -142,8 +146,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
-      // Wait for form to render
-      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+      // Add a level and word
+      await page.getByRole('button', { name: 'Add Level' }).click();
+      await page.getByRole('button', { name: 'Add word' }).click();
 
       // Fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -188,8 +193,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
-      // Wait for form to render
-      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+      // Add a level and word
+      await page.getByRole('button', { name: 'Add Level' }).click();
+      await page.getByRole('button', { name: 'Add word' }).click();
 
       // Pre-fill Meaning and IPA
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -240,8 +246,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
-      // Wait for form to render
-      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+      // Add a level and word
+      await page.getByRole('button', { name: 'Add Level' }).click();
+      await page.getByRole('button', { name: 'Add word' }).click();
 
       // Pre-fill all metadata fields
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
