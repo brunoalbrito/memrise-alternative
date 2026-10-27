@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Word } from '../../src/features/home/model/types';
+import type { FieldName } from '../../src/features/ai-assistant/types/skipAI';
 import { detectFilledFields, getRequestedFields, allFieldsFilled, anyFieldsFilled } from '../../src/features/ai-assistant/utils/fieldDetection';
 import { useSkipFeedbackStore } from '../../src/features/ai-assistant/store/skipFeedbackStore';
 
@@ -47,9 +48,9 @@ describe('Skip-AI Feature Integration', () => {
 
     it('should track skipped fields in store', () => {
       const wordId = 'test-1';
-      const skippedFields = ['meaning'];
+      const skippedFields: FieldName[] = ['meaning'];
 
-      useSkipFeedbackStore.getState().setSkippedFields(wordId, skippedFields as any);
+      useSkipFeedbackStore.getState().setSkippedFields(wordId, skippedFields);
 
       const retrieved = useSkipFeedbackStore.getState().getSkipped(wordId);
       expect(retrieved).toEqual(['meaning']);
@@ -133,8 +134,8 @@ describe('Skip-AI Feature Integration', () => {
       const word1Id = 'word-1';
       const word2Id = 'word-2';
 
-      useSkipFeedbackStore.getState().setSkippedFields(word1Id, ['meaning' as any]);
-      useSkipFeedbackStore.getState().setSkippedFields(word2Id, ['ipa' as any, 'audio' as any]);
+      useSkipFeedbackStore.getState().setSkippedFields(word1Id, ['meaning'] as FieldName[]);
+      useSkipFeedbackStore.getState().setSkippedFields(word2Id, ['ipa', 'audio'] as FieldName[]);
 
       expect(useSkipFeedbackStore.getState().getSkipped(word1Id)).toEqual(['meaning']);
       expect(useSkipFeedbackStore.getState().getSkipped(word2Id)).toEqual(['ipa', 'audio']);
@@ -142,7 +143,7 @@ describe('Skip-AI Feature Integration', () => {
 
     it('should clear skipped fields when user edits', () => {
       const wordId = 'test-word';
-      useSkipFeedbackStore.getState().setSkippedFields(wordId, ['meaning' as any]);
+      useSkipFeedbackStore.getState().setSkippedFields(wordId, ['meaning'] as FieldName[]);
 
       expect(useSkipFeedbackStore.getState().getSkipped(wordId)).toEqual(['meaning']);
 
