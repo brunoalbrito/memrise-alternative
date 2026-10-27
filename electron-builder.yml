@@ -19,7 +19,7 @@ publish:
 mac:
   category: public.app-category.education
   target: [dmg, zip]
-  hardenedRuntime: true
+  # Note: hardenedRuntime disabled to prevent forced code signing. Enable only when signing credentials available.
   # Signing and notarization use CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID
   # when they are set (see .github/workflows/release.yml); without them an unsigned build is produced.
 win:
