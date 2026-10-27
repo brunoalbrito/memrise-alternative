@@ -1,10 +1,10 @@
 #!/bin/bash
-# commit-msg hook: Only allow commits from speckit workflows or with speckit: marker
+# commit-msg hook: Enforce conventional commits via speckit workflows
 
 COMMIT_MSG=$(cat "$1")
 
-# Allow if commit message starts with speckit: or contains [speckit]
-if echo "$COMMIT_MSG" | grep -qE '^speckit:|^\[speckit\]|^.*speckit: ' 2>/dev/null; then
+# Allow if commit message starts with conventional commit type
+if echo "$COMMIT_MSG" | grep -qE '^(feat|fix|perf|refactor|chore|docs)(\(.+\))?: ' 2>/dev/null; then
   exit 0
 fi
 
@@ -15,14 +15,17 @@ fi
 
 # Reject otherwise
 cat >&2 << 'EOF'
-❌ Commit blocked: speckit-only workflow enforced.
+❌ Commit blocked: Conventional commits required.
 
-Requirement: Commit message must start with 'speckit:' or '[speckit]'
+Format: <type>: <description>
+
+Valid types: feat, fix, perf, refactor, chore, docs
 
 Examples:
-  speckit: Update feature X
-  [speckit] Refactor module Y
-  speckit: Add tests for Z
+  feat: Add dark mode toggle to settings
+  fix: Resolve race condition in word sync
+  refactor: Simplify auth middleware
+  chore: Update dependencies
 
 Use speckit skills to make changes:
   /speckit-implement <task>
