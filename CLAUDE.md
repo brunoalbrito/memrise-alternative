@@ -81,17 +81,21 @@ All feature work starts with a spec via `/speckit-specify`, followed by `/specki
 
 ## Git Workflow
 
-**Speckit-only enforcement**: All commits must be made via speckit workflows. Commit messages must start with `speckit:` or `[speckit]`.
+**Conventional Commits via Speckit**: All commits must be made via speckit workflows and follow conventional commit format for semantic versioning.
 
 Valid workflow:
 - Use `/speckit-implement`, `/speckit-plan`, `/speckit-specify`, `/speckit-analyze`, etc.
-- Commit message format: `speckit: <change description>`
-- Example: `speckit: Add dark mode toggle to settings`
+- Commit message format: `<type>: <description>` where type is `feat`, `fix`, `perf`, `refactor`, `docs`, or `chore`
+- Examples: 
+  - `feat: Add dark mode toggle to settings`
+  - `fix: Resolve race condition in word sync`
+  - `refactor: Simplify auth middleware`
 
 Enforcement:
-- Local commit-msg hook (`.githooks/commit-msg`) blocks non-speckit commits
+- Local commit-msg hook (`.githooks/commit-msg`) enforces conventional commit format
 - Hook auto-installed on first run; `git config core.hooksPath .githooks` enables it
 - To re-run setup: `git config core.hooksPath .githooks`
+- Semantic-release uses these commits to auto-generate version bumps (feat → minor, fix → patch)
 
 **Main branch protection**: No direct commits to main (requires PR). Use speckit workflow on feature branch, then PR to main.
 ## CI
