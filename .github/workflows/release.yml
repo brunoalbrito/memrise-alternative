@@ -154,17 +154,25 @@ jobs:
       - name: TypeScript compilation
         run: pnpm run build
 
-      - name: Build macOS installer
-        run: pnpm build && pnpm exec electron-builder --publish=never
+      - name: Build macOS app
+        run: pnpm build && CSC_LINK="" pnpm exec electron-builder --dir --publish=never
         env:
           CI: true
+
+      - name: Create DMG from app bundle
+        run: |
+          VERSION="${{ needs.detect-version.outputs.new-version }}"
+          hdiutil create -volname "MemBetter" \
+            -srcfolder "./release/mac-arm64/MemBetter.app" \
+            -ov -format UDZO \
+            "release/MemBetter-${VERSION}-arm64.dmg"
 
       - name: Verify build artifacts
         run: |
           echo "Listing release directory:"
           ls -lah release/
 
-          if [ ! -f release/MemBetter-*-arm64*.dmg ]; then
+          if [ ! -f release/MemBetter-*-arm64.dmg ]; then
             echo "❌ DMG file not found in release/"
             exit 1
           fi
