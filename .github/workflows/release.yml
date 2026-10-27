@@ -155,9 +155,11 @@ jobs:
         run: pnpm run build
 
       - name: Build macOS app
-        run: pnpm build && CSC_LINK="" pnpm exec electron-builder --dir --publish=never
+        run: pnpm build && pnpm exec electron-builder --dir --publish=never
         env:
           CI: true
+          CSC_LINK: ""
+          SKIP_CODE_SIGNING: "true"
 
       - name: Create DMG from app bundle
         run: |
