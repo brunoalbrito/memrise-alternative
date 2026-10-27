@@ -32,7 +32,8 @@ async function setupEditorWithCourse(page: Page): Promise<void> {
   await page.evaluate(() => {
     location.hash = '#/course/skipai-test/edit';
   });
-  await page.waitForLoadState('domcontentloaded');
+  // Wait for editor UI to render (wait for "Add Level" button to appear)
+  await page.waitForSelector('button:has-text("Add Level")', { timeout: 10000 });
 }
 
 test.describe('Skip AI Generation Feature', () => {
@@ -41,6 +42,9 @@ test.describe('Skip AI Generation Feature', () => {
     try {
       const { page } = app;
       await setupEditorWithCourse(page);
+
+      // Wait for level and word form to appear
+      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
 
       // Find word row and fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -89,6 +93,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
+      // Wait for form to render
+      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+
       // Fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
       await meaningInput.fill('A nocturnal bird of prey');
@@ -135,6 +142,9 @@ test.describe('Skip AI Generation Feature', () => {
       const { page } = app;
       await setupEditorWithCourse(page);
 
+      // Wait for form to render
+      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
+
       // Fill Meaning field
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
       await meaningInput.fill('A nocturnal bird of prey');
@@ -177,6 +187,9 @@ test.describe('Skip AI Generation Feature', () => {
     try {
       const { page } = app;
       await setupEditorWithCourse(page);
+
+      // Wait for form to render
+      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
 
       // Pre-fill Meaning and IPA
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
@@ -226,6 +239,9 @@ test.describe('Skip AI Generation Feature', () => {
     try {
       const { page } = app;
       await setupEditorWithCourse(page);
+
+      // Wait for form to render
+      await page.waitForSelector('input[aria-label="Word"]', { timeout: 5000 });
 
       // Pre-fill all metadata fields
       const meaningInput = page.locator('textarea[aria-label="Meaning"]').first();
